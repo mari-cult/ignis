@@ -21,6 +21,8 @@ struct Serialized {
     #[serde(default)]
     features: Vec<String>,
     artifacts: Vec<Artifact>,
+    #[serde(default)]
+    beta_artifacts: Vec<(String, Vec<String>)>,
 }
 
 impl Package {
@@ -29,7 +31,7 @@ impl Package {
         let name = path.file_stem().unwrap().into();
 
         let content = fs::read_to_string(path).unwrap();
-        let serialized = serde_yaml::from_str(&content)
+        let mut serialized: Serialized = serde_yaml::from_str(&content)
             .map_err(|error| Error::deserialize_spec(Utf8Path::new(&name), &content, error))?;
 
         Ok(Self { name, serialized })
@@ -92,6 +94,97 @@ impl Package {
         let mut instant = Instant::now();
 
         print!(" build {}.. ", self.name());
+
+        use std::io::Write;
+
+        let mut build = std::fs::File::options()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(source_dir.join("build.zig"))?;
+
+        writeln!(&mut build, "const std = @import(\"std\");")?;
+        writeln!(&mut build)?;
+        writeln!(&mut build, "pub fn build(b: *std.Build) void {{")?;
+        writeln!(
+            &mut build,
+            "    const optimize = b.standardOptimizeOption(.{{}});"
+        )?;
+        writeln!(
+            &mut build,
+            "    const target = b.standardTargetOptions(.{{}});"
+        )?;
+        writeln!(&mut build)?;
+
+        for (artifact, sources) in self.serialized.beta_artifacts.iter() {
+            let sources = sources
+                .iter()
+                .map(|source| format!("\"{source}\""))
+                .collect::<Vec<_>>()
+                .join(",\n        ");
+
+            if let Some(artifact) = artifact.strip_prefix("lib ") {
+                writeln!(
+                    &mut build,
+                    "    const lib{artifact} = b.addStaticLibrary(.{{"
+                )?;
+                writeln!(&mut build, "        .link_libc = true,")?;
+                writeln!(&mut build, "        .name = \"{artifact}\",")?;
+                writeln!(&mut build, "        .optimize = optimize,")?;
+                writeln!(&mut build, "        .target = target,")?;
+                writeln!(&mut build, "    }});")?;
+                writeln!(&mut build)?;
+                writeln!(&mut build, "    lib{artifact}.addCSourceFiles(&.{{")?;
+                writeln!(&mut build, "        {sources}")?;
+                writeln!(&mut build, "        }},")?;
+                writeln!(&mut build, "        &[_][]const u8{{}},")?;
+                writeln!(&mut build, "    );")?;
+                writeln!(&mut build, "    lib{artifact}.addIncludePath(\"lib\");")?;
+                writeln!(
+                    &mut build,
+                    "    lib{artifact}.addIncludePath(\"lib/common\");"
+                )?;
+                writeln!(&mut build)?;
+                writeln!(&mut build, "    b.installArtifact(lib{artifact});")?;
+                writeln!(&mut build)?;
+            }
+
+            if let Some(artifact) = artifact.strip_prefix("bin ") {
+                writeln!(&mut build, "    const {artifact} = b.addExecutable(.{{")?;
+                writeln!(&mut build, "        .link_libc = true,")?;
+                writeln!(&mut build, "        .name = \"{artifact}\",")?;
+                writeln!(&mut build, "        .optimize = optimize,")?;
+                writeln!(&mut build, "        .target = target,")?;
+                writeln!(&mut build, "    }});")?;
+                writeln!(&mut build)?;
+                writeln!(&mut build, "    {artifact}.addCSourceFiles(&.{{")?;
+                writeln!(&mut build, "        {sources}")?;
+                writeln!(&mut build, "        }},")?;
+                writeln!(&mut build, "        &[_][]const u8{{}},")?;
+                writeln!(&mut build, "    );")?;
+                writeln!(&mut build, "    {artifact}.addIncludePath(\"lib\");")?;
+                writeln!(&mut build, "    {artifact}.addIncludePath(\"lib/common\");")?;
+                writeln!(
+                    &mut build,
+                    "    {artifact}.addObjectFile(\"zig-out/lib/libzstd.a\");"
+                )?;
+                writeln!(&mut build)?;
+                writeln!(&mut build, "    b.installArtifact({artifact});")?;
+                writeln!(&mut build)?;
+            }
+        }
+
+        writeln!(&mut build, "}}")?;
+
+        let mut command = Command::new("zig");
+
+        command
+            .arg("build")
+            .arg("-Doptimize=ReleaseFast")
+            .arg("-Dtarget=x86_64-linux-musl")
+            .current_dir(&source_dir)
+            .spawn()?
+            .wait()?;
 
         let mut command = Command::new("cargo");
         let features = self.features().join(",");
