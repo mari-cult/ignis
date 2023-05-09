@@ -72,6 +72,25 @@ impl Target {
 
         Self { arch, env, link }
     }
+
+    /// Return the equivalent rust target triple.
+    // NOTE: `rustc --print target-list`
+    pub fn rust_triple(&self) -> &'static str {
+        let Self { arch, env, .. } = self;
+
+        match (arch, env) {
+            // gnu
+            (Arch::Arm, Env::Gnu) => "armv7-unknown-linux-gnueabi",
+            (Arch::Arm64, Env::Gnu) => "aarch64-unknown-linux-gnu",
+            (Arch::X86, Env::Gnu) => "i686-unknown-linux-gnu",
+            (Arch::X86_64, Env::Gnu) => "x86_64-unknown-linux-gnu",
+            // musl
+            (Arch::Arm, Env::Musl) => "armv7-unknown-linux-musleabi",
+            (Arch::Arm64, Env::Musl) => "aarch64-unknown-linux-musl",
+            (Arch::X86, Env::Musl) => "i686-unknown-linux-musl",
+            (Arch::X86_64, Env::Musl) => "x86_64-unknown-linux-musl",
+        }
+    }
 }
 
 impl FromStr for Target {

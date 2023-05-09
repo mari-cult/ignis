@@ -58,7 +58,7 @@ fn main() {
                 .find(|package| package.name() == atom.package);
 
             if let Some(package) = package {
-                package.install().expect("lol");
+                package.install(atom.target).expect("lol");
             }
         }
     }

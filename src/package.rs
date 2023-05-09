@@ -1,7 +1,10 @@
-use super::{Artifact, Error, Result};
-use camino::Utf8Path;
-use serde::{Deserialize, Serialize};
-use std::{fs, io, os::unix, process::Command, time::Instant};
+use {
+    super::{Artifact, Error, Result},
+    camino::Utf8Path,
+    milk_target::Target,
+    serde::{Deserialize, Serialize},
+    std::{fs, io, os::unix, process::Command, time::Instant},
+};
 
 #[derive(Debug)]
 pub struct Package {
@@ -52,10 +55,11 @@ impl Package {
         &self.serialized.artifacts
     }
 
-    pub fn install(&self) -> io::Result<()> {
+    pub fn install(&self, target: Target) -> io::Result<()> {
+        let rust_triple = target.rust_triple();
         let root_dir = Utf8Path::new("/mocha");
         let source_dir = root_dir.join("src").join(self.name());
-        let target_dir = source_dir.join("target/x86_64-unknown-linux-musl/release");
+        let target_dir = source_dir.join(format!("target/{rust_triple}/release"));
         let binary_dir = root_dir.join("bin");
 
         print!(" sync {}.. ", self.name());
@@ -189,7 +193,7 @@ impl Package {
             .arg("zigbuild")
             .arg(format!("--features={features}"))
             .arg("--no-default-features")
-            .arg("--target=x86_64-unknown-linux-musl")
+            .arg(format!("--target={rust_triple}"))
             .arg("--release")
             .current_dir(source_dir)
             /*.stdin(Stdio::null())
