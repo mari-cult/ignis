@@ -1,10 +1,10 @@
 use {
-    crate::{artifact::Artifact, error::Error},
+    crate::{artifact::Artifact, atom::Atom, error::Error},
     clap::Parser,
-    std::{env, io},
 };
 
 mod artifact;
+mod atom;
 mod error;
 mod package;
 
@@ -12,7 +12,7 @@ type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Parser)]
 pub struct Args {
-    atoms: Vec<String>,
+    atoms: Vec<Atom>,
 }
 
 fn main() {
@@ -23,16 +23,17 @@ fn main() {
         .into_iter()
         .flatten()
         .flat_map(|entry| {
-            let path = camino::Utf8Path::from_path(entry.path())?;
-            let repository = path.parent()?.as_str();
-            let spec = path.file_name()?;
+            if entry.file_type().is_file() {
+                let path = camino::Utf8Path::from_path(entry.path())?;
+                let _repository = path.parent()?.as_str();
+                let _spec = path.file_name()?;
 
-            match package::Package::from_path(path) {
-                Ok(package) => Some(package),
-                Err(error) => {
-                    error.emit();
-                    std::process::exit(0);
+                match package::Package::from_path(path) {
+                    Ok(package) => Some(package),
+                    Err(error) => error.emit(),
                 }
+            } else {
+                None
             }
         })
         .collect::<Vec<_>>();
@@ -50,7 +51,11 @@ fn main() {
         }
     } else {
         for atom in args.atoms {
-            let package = packages.iter().find(|package| package.name() == atom);
+            println!(" -> {atom}");
+
+            let package = packages
+                .iter()
+                .find(|package| package.name() == atom.package);
 
             if let Some(package) = package {
                 package.install().expect("lol");

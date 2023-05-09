@@ -1,12 +1,7 @@
 use super::{Artifact, Error, Result};
 use camino::Utf8Path;
 use serde::{Deserialize, Serialize};
-use std::{
-    fs, io,
-    os::unix,
-    process::{Command, Stdio},
-    time::Instant,
-};
+use std::{fs, io, os::unix, process::Command, time::Instant};
 
 #[derive(Debug)]
 pub struct Package {
@@ -31,7 +26,7 @@ impl Package {
         let name = path.file_stem().unwrap().into();
 
         let content = fs::read_to_string(path).unwrap();
-        let mut serialized: Serialized = serde_yaml::from_str(&content)
+        let serialized: Serialized = serde_yaml::from_str(&content)
             .map_err(|error| Error::deserialize_spec(Utf8Path::new(&name), &content, error))?;
 
         Ok(Self { name, serialized })
@@ -65,7 +60,7 @@ impl Package {
 
         print!(" sync {}.. ", self.name());
 
-        let mut instant = Instant::now();
+        let instant = Instant::now();
         let mut command = Command::new("gix");
 
         if source_dir.exists() {
@@ -91,7 +86,7 @@ impl Package {
 
         println!("done! took {:.2?}", instant.elapsed());
 
-        let mut instant = Instant::now();
+        let instant = Instant::now();
 
         print!(" build {}.. ", self.name());
 

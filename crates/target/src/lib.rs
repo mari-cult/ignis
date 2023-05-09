@@ -6,7 +6,10 @@
 #![feature(inline_const_pat)]
 #![feature(macro_metavar_expr)]
 
-use {std::str::FromStr, thiserror::Error};
+use {
+    std::{fmt, str::FromStr},
+    thiserror::Error,
+};
 
 pub use crate::part::{arch, env, link, Arch, Env, Link};
 
@@ -22,6 +25,9 @@ pub enum TargetError {
 
     #[error("unknown target link target: {0}")]
     Link(Box<str>),
+
+    #[error("the gnu environment does not support static linking")]
+    GnuStaticUnsupported,
 
     #[error("invalid target: {0}")]
     Invalid(Box<str>),
@@ -39,7 +45,7 @@ pub enum TargetError {
 /// "zstd@arm64-musl" -> (Arm64, Musl, HOST)
 /// "zstd@arm64-musl-dynamic" -> (Arm64, Musl, Dynamic)
 /// ```
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct Target {
     arch: Arch,
     env: Env,
@@ -48,16 +54,20 @@ pub struct Target {
 
 impl Target {
     /// The host target.
-    pub const HOST: Target = Target::new(Arch::HOST, Env::HOST, Link::HOST);
+    pub const HOST: Target = Target::new_host(Arch::HOST, Env::HOST, Link::HOST);
 
     /// Create a new `Target`.
-    ///
-    /// # Panics
-    ///
-    /// Only if the target is impossible, i.e. `gnu-static`.
-    pub const fn new(arch: Arch, env: Env, link: Link) -> Self {
+    pub const fn new(arch: Arch, env: Env, link: Link) -> Result<Self, TargetError> {
         if matches!((env, link), (Env::Gnu, Link::Static)) {
-            panic!("the gnu environment does not support a static link target");
+            return Err(TargetError::GnuStaticUnsupported);
+        }
+
+        Ok(Self { arch, env, link })
+    }
+
+    const fn new_host(arch: Arch, env: Env, link: Link) -> Self {
+        if matches!((env, link), (Env::Gnu, Link::Static)) {
+            panic!("the gnu environment does not support static linking");
         }
 
         Self { arch, env, link }
@@ -71,49 +81,62 @@ impl FromStr for Target {
         let mut iter = string.splitn(3, '-');
 
         match (iter.next(), iter.next(), iter.next()) {
-            (Some(arch), Some(env), Some(link)) => Ok(Self {
-                arch: arch.parse()?,
-                env: env.parse()?,
-                link: link.parse()?,
-            }),
+            (Some(arch), Some(env), Some(link)) => {
+                Self::new(arch.parse()?, env.parse()?, link.parse()?)
+            }
             (Some(opaque_a), Some(opaque_b), None) => {
                 if let (Ok(arch), Ok(env)) = (opaque_a.parse(), opaque_b.parse()) {
+                    // NOTE: For convenience, assume `gnu-dynamic`.
                     let link = if env == Env::Gnu {
                         Link::Dynamic
                     } else {
                         Link::HOST
                     };
 
-                    Ok(Self { arch, env, link })
+                    Self::new(arch, env, link)
                 } else if let (Ok(env), Ok(link)) = (opaque_a.parse(), opaque_b.parse()) {
-                    Ok(Self {
-                        env,
-                        link,
-                        ..Self::HOST
-                    })
+                    Self::new(Arch::HOST, env, link)
                 } else if let (Ok(arch), Ok(link)) = (opaque_a.parse(), opaque_b.parse()) {
-                    Ok(Self {
-                        arch,
-                        link,
-                        ..Self::HOST
-                    })
+                    Self::new(arch, Env::HOST, link)
                 } else {
                     Err(TargetError::Invalid(Box::from(string)))
                 }
             }
             (Some(opaque), None, None) => {
                 if let Ok(arch) = opaque.parse() {
-                    Ok(Self { arch, ..Self::HOST })
+                    Self::new(arch, Env::HOST, Link::HOST)
                 } else if let Ok(env) = opaque.parse() {
-                    Ok(Self { env, ..Self::HOST })
+                    // NOTE: For convenience, assume `gnu-dynamic`.
+                    let link = if env == Env::Gnu {
+                        Link::Dynamic
+                    } else {
+                        Link::HOST
+                    };
+
+                    Self::new(Arch::HOST, env, link)
                 } else if let Ok(link) = opaque.parse() {
-                    Ok(Self { link, ..Self::HOST })
+                    Self::new(Arch::HOST, Env::HOST, link)
                 } else {
                     Err(TargetError::Invalid(Box::from(string)))
                 }
             }
             _ => panic!(),
         }
+    }
+}
+
+impl fmt::Debug for Target {
+    #[inline]
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, fmt)
+    }
+}
+
+impl fmt::Display for Target {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { arch, env, link } = self;
+
+        write!(fmt, "{arch}-{env}-{link}")
     }
 }
 

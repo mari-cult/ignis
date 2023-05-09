@@ -240,6 +240,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ece97ea872ece730aed82664c424eb4c8291e1ff2480247ccf7409044bc6479f"
 
 [[package]]
+name = "milk"
+version = "0.0.0"
+dependencies = [
+ "camino",
+ "clap",
+ "codespan-reporting",
+ "jobserver",
+ "milk-target",
+ "petgraph",
+ "serde",
+ "serde_yaml",
+ "walkdir",
+ "yansi",
+]
+
+[[package]]
+name = "milk-target"
+version = "0.0.0"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -350,29 +373,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "tea"
-version = "0.0.0"
-dependencies = [
- "camino",
- "clap",
- "codespan-reporting",
- "jobserver",
- "petgraph",
- "serde",
- "serde_yaml",
- "tea-target",
- "walkdir",
- "yansi",
-]
-
-[[package]]
-name = "tea-target"
-version = "0.0.0"
-dependencies = [
- "thiserror",
 ]
 
 [[package]]
