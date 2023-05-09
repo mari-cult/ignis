@@ -43,6 +43,9 @@ fn main() {
         for package in packages {
             println!("{}", package.name());
             println!("  {}", package.source());
+            println!("  {:?}", package.features());
+            println!("  {:?}", package.artifacts());
+            println!("  {:?}", package.dependencies());
             println!();
         }
     } else {
@@ -50,7 +53,7 @@ fn main() {
             let package = packages.iter().find(|package| package.name() == atom);
 
             if let Some(package) = package {
-                package.install();
+                package.install().expect("lol");
             }
         }
     }
