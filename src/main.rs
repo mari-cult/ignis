@@ -10,8 +10,20 @@ mod package;
 
 type Result<T> = std::result::Result<T, Error>;
 
+/// Mocha's package manager.
 #[derive(Debug, Parser)]
-pub struct Args {
+pub enum Args {
+    /// Install packages.
+    Add(Add),
+
+    /// Sync repositories.
+    Sync,
+}
+
+/// Install packages.
+#[derive(Debug, Parser)]
+pub struct Add {
+    /// <package>@<target>.
     atoms: Vec<Atom>,
 }
 
@@ -40,26 +52,31 @@ fn main() {
 
     let args = Args::parse();
 
-    if args.atoms.is_empty() {
-        for package in packages {
-            println!("{}", package.name());
-            println!("  {}", package.source());
-            println!("  {:?}", package.features());
-            println!("  {:?}", package.artifacts());
-            println!("  {:?}", package.dependencies());
-            println!();
-        }
-    } else {
-        for atom in args.atoms {
-            println!(" -> {atom}");
+    match args {
+        Args::Add(Add { atoms }) => {
+            if atoms.is_empty() {
+                for package in packages {
+                    println!("{}", package.name());
+                    println!("  {}", package.source());
+                    println!("  {:?}", package.features());
+                    println!("  {:?}", package.artifacts());
+                    println!("  {:?}", package.dependencies());
+                    println!();
+                }
+            } else {
+                for atom in atoms {
+                    println!(" -> {atom}");
 
-            let package = packages
-                .iter()
-                .find(|package| package.name() == atom.package);
+                    let package = packages
+                        .iter()
+                        .find(|package| package.name() == atom.package);
 
-            if let Some(package) = package {
-                package.install(atom.target).expect("lol");
+                    if let Some(package) = package {
+                        package.install(atom.target).expect("lol");
+                    }
+                }
             }
         }
+        Args::Sync => println!("sunch"),
     }
 }
