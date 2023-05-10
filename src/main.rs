@@ -1,5 +1,6 @@
 use {
     crate::{artifact::Artifact, atom::Atom, error::Error},
+    camino::Utf8PathBuf,
     clap::Parser,
 };
 
@@ -16,6 +17,9 @@ pub enum Args {
     /// Install packages.
     Add(Add),
 
+    /// Format package specifications.
+    Fmt(Fmt),
+
     /// Sync repositories.
     Sync,
 }
@@ -27,33 +31,40 @@ pub struct Add {
     atoms: Vec<Atom>,
 }
 
+/// Format package specifications.
+#[derive(Debug, Parser)]
+pub struct Fmt {
+    /// <package>.spec.
+    specs: Vec<Utf8PathBuf>,
+}
+
 fn main() {
-    let packages = walkdir::WalkDir::new("/mocha/repos")
-        .max_depth(2)
-        .min_depth(2)
-        .sort_by_file_name()
-        .into_iter()
-        .flatten()
-        .flat_map(|entry| {
-            if entry.file_type().is_file() {
-                let path = camino::Utf8Path::from_path(entry.path())?;
-                let _repository = path.parent()?.as_str();
-                let _spec = path.file_name()?;
-
-                match package::Package::from_path(path) {
-                    Ok(package) => Some(package),
-                    Err(error) => error.emit(),
-                }
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<_>>();
-
     let args = Args::parse();
 
     match args {
         Args::Add(Add { atoms }) => {
+            let packages = walkdir::WalkDir::new("/mocha/repos")
+                .max_depth(2)
+                .min_depth(2)
+                .sort_by_file_name()
+                .into_iter()
+                .flatten()
+                .flat_map(|entry| {
+                    if entry.file_type().is_file() {
+                        let path = camino::Utf8Path::from_path(entry.path())?;
+                        let _repository = path.parent()?.as_str();
+                        let _spec = path.file_name()?;
+
+                        match package::Package::from_path(path) {
+                            Ok(package) => Some(package),
+                            Err(error) => error.emit(),
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>();
+
             if atoms.is_empty() {
                 for package in packages {
                     println!("{}", package.name());
@@ -74,6 +85,13 @@ fn main() {
                     if let Some(package) = package {
                         package.install(atom.target).expect("lol");
                     }
+                }
+            }
+        }
+        Args::Fmt(Fmt { specs }) => {
+            for spec in specs {
+                if let Err(error) = package::Package::format(spec) {
+                    error.emit();
                 }
             }
         }

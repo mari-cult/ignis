@@ -16,10 +16,10 @@ pub struct Package {
 struct Serialized {
     source: String,
     dependencies: Vec<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     features: Vec<String>,
     artifacts: Vec<Artifact>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     beta_artifacts: Vec<(String, Vec<String>)>,
 }
 
@@ -33,6 +33,21 @@ impl Package {
             .map_err(|error| Error::deserialize_spec(Utf8Path::new(&name), &content, error))?;
 
         Ok(Self { name, serialized })
+    }
+
+    pub fn format<P: AsRef<Utf8Path>>(path: P) -> Result<()> {
+        let path = path.as_ref();
+        let name = path.file_stem().unwrap();
+
+        let content = fs::read_to_string(path).unwrap();
+        let serialized: Serialized = serde_yaml::from_str(&content)
+            .map_err(|error| Error::deserialize_spec(Utf8Path::new(&name), &content, error))?;
+
+        let serialized = serde_yaml::to_string(&serialized).unwrap();
+
+        fs::write(path, serialized).unwrap();
+
+        Ok(())
     }
 
     pub fn name(&self) -> &str {
