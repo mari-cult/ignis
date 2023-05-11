@@ -88,7 +88,7 @@ impl Package {
         print!(" sync {}.. ", self.name());
 
         let instant = Instant::now();
-        let mut command = Command::new("gix");
+        let mut command = Command::new("git");
 
         if source_dir.exists() {
             command.arg("fetch").args(&["--depth", "1"]);
@@ -98,7 +98,6 @@ impl Package {
             command
                 .arg("clone")
                 .args(&["--depth", "1"])
-                .arg("--no-tags")
                 .arg(self.source())
                 .arg(".");
         }
