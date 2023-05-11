@@ -38,7 +38,8 @@ pub struct Fmt {
     specs: Vec<Utf8PathBuf>,
 }
 
-fn main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
     let args = Args::parse();
 
     match args {
@@ -83,7 +84,7 @@ fn main() {
                         .find(|package| package.name() == atom.package);
 
                     if let Some(package) = package {
-                        package.install(atom.target).expect("lol");
+                        package.install(atom.target).await.expect("lol");
                     }
                 }
             }

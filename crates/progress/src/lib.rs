@@ -1,46 +1,4 @@
-use std::{
-    io::{self, BufWriter, Write},
-    thread,
-    time::Duration,
-};
-
-fn main() {
-    println!();
-
-    let mut stdout = BufWriter::new(io::stdout());
-
-    let mut j = 0;
-    let mut z = 0;
-
-    for i in (0..26567_usize).step_by(187) {
-        if i % 100 > 50 {
-            j += 1;
-        }
-
-        if z % 10 < 7 {
-            z += 1;
-        }
-
-        let mut bars = ProgressBars::new();
-
-        if j < 57 {
-            bars = bars.add("libzstd", j, 57);
-        }
-
-        if z < 298 {
-            bars = bars.add("musl", z, 298);
-        }
-
-        bars.add("chromium", i, 26567)
-            .terminal_width(80)
-            .render(&mut stdout)
-            .unwrap();
-
-        thread::sleep(Duration::from_millis(59));
-    }
-
-    println!();
-}
+use std::io::{self, Write};
 
 /// A single bar.
 struct Bar<'a> {

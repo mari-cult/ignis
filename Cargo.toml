@@ -8,12 +8,15 @@ camino = { version = "1.1.4", default-features = false }
 clap = { version = "4.2.5", default-features = false, features = ["color", "derive", "env", "help", "std", "suggestions", "usage", "wrap_help"] }
 codespan-reporting = { version = "0.11.1", default-features = false }
 jobserver = { version = "0.1.26", default-features = false }
+milk-cargo = { version = "0.0.0", path = "crates/cargo", default-features = false }
+milk-progress = { version = "0.0.0", path = "crates/progress", default-features = false }
 milk-target = { version = "0.0.0", path = "crates/target", default-features = false }
 petgraph = { version = "0.6.3", default-features = false }
 serde = { version = "1.0.160", default-features = false, features = ["derive", "std"] }
 serde_yaml = { version = "0.9.21", default-features = false }
+tokio = { version = "1.28.1", default-features = false, features = ["macros", "rt"] }
 walkdir = { version = "2.3.3", default-features = false }
 yansi = { version = "0.5.1", default-features = false }
 
 [workspace]
-members = ["crates/target"]
+members = ["crates/*"]

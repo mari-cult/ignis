@@ -1,9 +1,17 @@
 use {
     super::{Artifact, Error, Result},
     camino::Utf8Path,
+    milk_cargo::{Cargo, Status},
+    milk_progress::ProgressBars,
     milk_target::Target,
     serde::{Deserialize, Serialize},
-    std::{fs, io, os::unix, process::Command, time::Instant},
+    std::{
+        fs,
+        io::{self, BufWriter},
+        os::unix,
+        process::{Command, Stdio},
+        time::Instant,
+    },
 };
 
 #[derive(Debug)]
@@ -70,7 +78,7 @@ impl Package {
         &self.serialized.artifacts
     }
 
-    pub fn install(&self, target: Target) -> io::Result<()> {
+    pub async fn install(&self, target: Target) -> io::Result<()> {
         let rust_triple = target.rust_triple();
         let root_dir = Utf8Path::new("/mocha");
         let source_dir = root_dir.join("src").join(self.name());
@@ -100,8 +108,11 @@ impl Package {
             /*.stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())*/
-            .spawn()?
-            .wait()?;
+            ;
+
+        println!("!!! {command:?}");
+
+        command.spawn()?.wait()?;
 
         println!("done! took {:.2?}", instant.elapsed());
 
@@ -196,26 +207,26 @@ impl Package {
             .arg("build")
             .arg("-Doptimize=ReleaseFast")
             .arg("-Dtarget=x86_64-linux-musl")
-            .current_dir(&source_dir)
-            .spawn()?
-            .wait()?;
+            .current_dir(&source_dir);
 
-        let mut command = Command::new("cargo");
-        let features = self.features().join(",");
+        println!("!!! {command:?}");
 
-        command
-            .arg("+nightly")
-            .arg("zigbuild")
-            .arg(format!("--features={features}"))
-            .arg("--no-default-features")
-            .arg(format!("--target={rust_triple}"))
-            .arg("--release")
-            .current_dir(source_dir)
-            /*.stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())*/
-            .spawn()?
-            .wait()?;
+        command.spawn()?.wait()?;
+
+        let cargo = Cargo::new("/mari/.cargo/bin/cargo")?;
+        let mut child = cargo
+            .build(&source_dir)
+            .features(self.features())
+            .target(target)
+            .spawn()?;
+
+        let mut stdout = BufWriter::new(io::stdout());
+
+        while let Some(Status { completed, total }) = child.process().await? {
+            ProgressBars::new()
+                .add(self.name(), completed, total)
+                .render(&mut stdout)?;
+        }
 
         println!("done! took {:.2?}", instant.elapsed());
 
