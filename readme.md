@@ -45,5 +45,7 @@ cargo zigbuild --target=x86_64-unknown-linux-musl
 Use Milk to build & install Milk.
   
 ```bash
-target/x86_64-unknown-linux-musl/release/milk add milk
-````
+target/x86_64-unknown-linux-musl/debug/milk add milk
+```
+
+Oh yeah, might wanna add `/mocha/bin` to `PATH`.
