@@ -1,11 +1,15 @@
 ### Installation
 
 Milk is written in rust, and heavily depends on the
-zig toolchain. Get rust from [https://rustup.rs](https://rustup.rs).
-As it is installed to your home, if your system
-provides it, say yes to it's complaint. Get the 
-master build of zig from [https://ziglang.org/download](https://ziglang.org/download).
-Extract the tarball and export PATH to provide the `zig` binary.
+Zig toolchain.
+
+Obtain Rust from [https://rustup.rs](https://rustup.rs).
+If it complains that rust is already installed, say `yes`,
+it will not interfere with your system. And your system
+version is unsupported.
+
+Obtain the master build of Zig from [https://ziglang.org/download](https://ziglang.org/download).
+Extract the tarball somewhere, update `PATH` to provide the `zig` binary.
 
 Install the musl target.
 
@@ -13,7 +17,7 @@ Install the musl target.
 rustup target add x86_64-unknown-linux-musl
 ````
 
-Install the following cargo extension that uses Zig.
+Install the following cargo extension that uses Zig for builds.
 
 ```bash
 $ cargo install cargo-zigbuild
