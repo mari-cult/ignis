@@ -238,20 +238,21 @@ impl Package {
                     let dst_name = rename_to.as_deref().unwrap_or(src_name);
                     let dst_path = binary_dir.join(dst_name);
 
-                    artifact_log("bin", src_name, rename_to.as_deref());
-
                     let _ = fs::remove_file(&dst_path);
                     fs::copy(src_path, dst_path)?;
+
+                    artifact_log("bin", src_name, rename_to.as_deref());
                 }
+
                 Artifact::Sym { name, points_to } => {
                     let src_name: &str = points_to;
                     let dst_name: &str = name;
                     let dst_path = binary_dir.join(dst_name);
 
-                    artifact_log("sym", src_name, Some(dst_name));
-
                     let _ = fs::remove_file(&dst_path);
                     unix::fs::symlink(src_name, dst_path)?;
+
+                    artifact_log("sym", src_name, Some(dst_name));
                 }
             }
         }

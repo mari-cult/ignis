@@ -8,7 +8,7 @@ If it complains that rust is already installed, say `yes`,
 it will not interfere with your system. And your system
 version is unsupported.
 
-Obtain the master build of Zig from [https:/hwot o d/ziglang.org/download](https://ziglang.org/download).
+Obtain the master build of Zig from [https://ziglang.org/download](https://ziglang.org/download).
 Extract the tarball somewhere, update `PATH` to provide the `zig` binary.
 
 Install the musl target.
