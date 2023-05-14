@@ -10,5 +10,5 @@ type Result<T> = std::result::Result<T, Error>;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    tui::Milk::run();
+    tui::Milk::run().await;
 }
