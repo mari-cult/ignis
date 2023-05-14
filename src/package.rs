@@ -212,7 +212,7 @@ impl Package {
 
         command.spawn()?.wait()?;
 
-        let cargo = Cargo::new("/mari/.cargo/bin/cargo")?;
+        let cargo = Cargo::new("~/.cargo/bin/cargo")?;
         let mut child = cargo
             .build(&source_dir)
             .features(self.features())
