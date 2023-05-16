@@ -1,3 +1,5 @@
+#![deny(warnings)]
+
 use {
     camino::Utf8PathBuf,
     std::{
@@ -195,6 +197,7 @@ impl Command {
         self.into_command().exec()
     }
 
+    /// Executes the command as a child process, returning a handle to it.
     #[inline]
     pub fn spawn(self) -> io::Result<Child> {
         let child = TokioCommand::from(self.into_command()).spawn()?;
@@ -202,6 +205,7 @@ impl Command {
         Ok(Child { child })
     }
 
+    /// Executes the command as a child process, returning a handle to it.
     #[inline]
     pub fn spawn_blocking(self) -> io::Result<BlockingChild> {
         let child = self.into_command().spawn()?;
