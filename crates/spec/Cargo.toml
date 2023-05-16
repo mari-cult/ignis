@@ -1,0 +1,8 @@
+[package]
+name = "milk-spec"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0.163", default-features = false, features = ["derive", "std"] }
+serde_yaml = { version = "0.9.21", default-features = false }

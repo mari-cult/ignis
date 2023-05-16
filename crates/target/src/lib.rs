@@ -1,17 +1,11 @@
 #![deny(warnings)]
-#![allow(incomplete_features)]
-#![allow(unused_macros)]
-#![feature(const_trait_impl)]
-#![feature(decl_macro)]
-#![feature(inline_const_pat)]
-#![feature(macro_metavar_expr)]
 
 use {
     std::{fmt, str::FromStr},
     thiserror::Error,
 };
 
-pub use crate::part::{arch, env, link, Arch, Env, Link};
+pub use crate::part::{Arch, Env, Link};
 
 mod part;
 
@@ -157,14 +151,4 @@ impl fmt::Display for Target {
 
         write!(fmt, "{arch}-{env}-{link}")
     }
-}
-
-pub macro target($arch:ident-$env:ident-$link:ident) {
-    const TARGET: $crate::Target = $crate::Target {
-        arch: $crate::arch!($arch),
-        env: $crate::env!($env),
-        link: $crate::link!($link),
-    };
-
-    TARGET
 }
