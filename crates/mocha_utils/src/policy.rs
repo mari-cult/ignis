@@ -26,7 +26,6 @@ pub enum Category {
 }
 
 /// Execution policy for [`Command`](crate::Command).
-#[derive(Default)]
 pub struct Policy {
     network_rule: Option<Rule>,
     users_rule: Option<Rule>,
@@ -36,8 +35,12 @@ pub struct Policy {
 impl Policy {
     /// Default policy (allow all).
     #[inline]
-    pub fn new() -> Self {
-        Self::default()
+    pub(crate) fn new() -> Self {
+        Self {
+            network_rule: None,
+            users_rule: None,
+            set_users_rule: None,
+        }
     }
 
     /// Combine polices.
