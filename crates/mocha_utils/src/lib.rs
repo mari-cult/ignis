@@ -30,12 +30,12 @@ pub struct Command {
 
 /// Representation of a child process spawned onto an event loop.
 pub struct Child {
-    pub child: TokioChild,
+    child: TokioChild,
 }
 
 /// Representation of a running or exited child process.
 pub struct BlockingChild {
-    pub child: StdChild,
+    child: StdChild,
 }
 
 impl Command {
