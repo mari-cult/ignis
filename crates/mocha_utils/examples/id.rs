@@ -4,9 +4,10 @@ use {
 };
 
 fn main() {
-    let error = Command::new("/usr/bin/id")
+    Command::new("/usr/bin/id")
         .execution_policy((Category::Users, ErrorKind::PermissionDenied))
-        .spawn_in_place();
-
-    eprintln!("error: {error}");
+        .spawn_blocking()
+        .expect("no id")
+        .wait()
+        .expect("it died");
 }

@@ -3,10 +3,11 @@ use {
     std::{
         collections::HashMap,
         ffi::OsString,
-        io,
+        fmt, io,
         os::unix::{ffi::OsStringExt, process::CommandExt},
-        process::Command as StdCommand,
+        process::{Child as StdChild, Command as StdCommand, ExitStatus},
     },
+    tokio::process::{Child as TokioChild, Command as TokioCommand},
 };
 
 pub use policy::{Category, Policy, Rule};
@@ -25,6 +26,16 @@ pub struct Command {
     group_id: Option<u32>,
     group_ids: Vec<u32>,
     execution_policy: Policy,
+}
+
+/// Representation of a child process spawned onto an event loop.
+pub struct Child {
+    pub child: TokioChild,
+}
+
+/// Representation of a running or exited child process.
+pub struct BlockingChild {
+    pub child: StdChild,
 }
 
 impl Command {
@@ -182,5 +193,71 @@ impl Command {
     #[inline]
     pub fn spawn_in_place(self) -> io::Error {
         self.into_command().exec()
+    }
+
+    #[inline]
+    pub fn spawn(self) -> io::Result<Child> {
+        let child = TokioCommand::from(self.into_command()).spawn()?;
+
+        Ok(Child { child })
+    }
+
+    #[inline]
+    pub fn spawn_blocking(self) -> io::Result<BlockingChild> {
+        let child = self.into_command().spawn()?;
+
+        Ok(BlockingChild { child })
+    }
+}
+
+impl Child {
+    /// Returns the OS-assigned process identifier associated with this child, while it is still running.
+    pub fn id(&self) -> Option<u32> {
+        self.child.id()
+    }
+
+    /// Forces the child to exit.
+    pub async fn kill(&mut self) -> io::Result<()> {
+        self.child.kill().await
+    }
+
+    /// Wait for the child process to exit completely, returnin the status that it exited with.
+    pub async fn wait(&mut self) -> io::Result<ExitStatus> {
+        self.child.wait().await
+    }
+}
+
+impl BlockingChild {
+    /// Returns the OS-assigned process identifier associated with this child, while it is still running.
+    pub fn id(&self) -> Option<u32> {
+        Some(self.child.id())
+    }
+
+    /// Forces the child process to exit.
+    pub fn kill(&mut self) -> io::Result<()> {
+        self.child.kill()
+    }
+
+    /// Wait for the child process to exit completely, returnin the status that it exited with.
+    pub fn wait(&mut self) -> io::Result<ExitStatus> {
+        self.child.wait()
+    }
+}
+
+impl fmt::Debug for Command {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.debug_struct("Command").finish_non_exhaustive()
+    }
+}
+
+impl fmt::Debug for Child {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.debug_struct("Child").finish_non_exhaustive()
+    }
+}
+
+impl fmt::Debug for BlockingChild {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.debug_struct("BlockingChild").finish_non_exhaustive()
     }
 }
