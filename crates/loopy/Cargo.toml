@@ -1,0 +1,9 @@
+[package]
+name = "loopy"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+bitflags = { version = "2.2.1", default-features = false }
+nix = { version = "0.26.2", default-features = false, features = ["ioctl"] }
+once_cell = { version = "1.17.1", default-features = false, features = ["std"] }

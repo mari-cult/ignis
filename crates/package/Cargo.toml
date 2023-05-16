@@ -7,4 +7,4 @@ edition = "2021"
 
 [dependencies]
 binrw = { version = "0.11.2", default-features = false, features = ["std"] }
-loopy = { git = "https://github.com/ka1mari/loopy", version = "0.0.0", default-features = false }
+loopy = { version = "0.0.0", path = "../loopy", default-features = false }

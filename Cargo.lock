@@ -336,7 +336,6 @@ dependencies = [
 [[package]]
 name = "loopy"
 version = "0.0.0"
-source = "git+https://github.com/ka1mari/loopy#7b09c63d09c69daeac4c3326a24c2ff1cd0732d3"
 dependencies = [
  "bitflags 2.2.1",
  "nix",
