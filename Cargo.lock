@@ -386,14 +386,6 @@ name = "milk-progress"
 version = "0.0.0"
 
 [[package]]
-name = "milk-seccomp"
-version = "0.1.0"
-dependencies = [
- "sc",
- "seccomp",
-]
-
-[[package]]
 name = "milk-spec"
 version = "0.0.0"
 dependencies = [

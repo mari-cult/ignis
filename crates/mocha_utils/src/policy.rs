@@ -34,11 +34,13 @@ pub struct Policy {
 }
 
 impl Policy {
+    /// Default policy (allow all).
     #[inline]
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Combine polices.
     #[inline]
     pub(crate) fn and(self, other: Self) -> Self {
         Self {
@@ -100,6 +102,12 @@ fn into_action(rule: Rule) -> seccomp::Action {
     }
 }
 
+/// Set the SecComp policy of the current thread.
+///
+/// # Safety
+///
+/// As SecComp controls how system calls are handled, this may have
+/// unintended side-effects on the current thread's behaviour.
 pub(crate) unsafe fn set_current_policy(policy: &Policy) -> io::Result<()> {
     use seccomp::{Action, Context};
 
@@ -134,22 +142,23 @@ pub(crate) unsafe fn set_current_policy(policy: &Policy) -> io::Result<()> {
     Ok(())
 }
 
+/// Add a set of system calls with the same rule to the SecComp policy.
 fn add_rules(
     context: &mut seccomp::Context,
     calls: &[usize],
     rule: &Option<Rule>,
 ) -> io::Result<()> {
-    use seccomp::{Compare, Op, Rule};
+    use seccomp::{Compare, Op};
 
-    let Some(rule) = rule else {
-        return Ok(());
+    let action = match *rule {
+        // If allow, or not present, allow anyway, it is the default behaviour.
+        Some(Rule::Allow) | None => return Ok(()),
+        Some(rule) => into_action(rule),
     };
-
-    let action = into_action(*rule);
 
     for call in calls {
         context
-            .add_rule(Rule::new(
+            .add_rule(seccomp::Rule::new(
                 *call,
                 Compare::arg(0).with(0).using(Op::Gt).build().unwrap(),
                 action,

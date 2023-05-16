@@ -167,6 +167,7 @@ impl Command {
 
         unsafe {
             command.pre_exec(move || {
+                // IDs must be set **before** SecComp policy is installed, to avoid blocking it in the case of `Category::SetUsers`.
                 sys::set_ids(user_id, group_id, group_ids.clone())?;
                 policy::set_current_policy(&execution_policy)?;
 
