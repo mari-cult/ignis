@@ -50,6 +50,15 @@ impl<'a> ProgressBars<'a> {
         self
     }
 
+    #[inline]
+    pub fn auto_terminal_width(mut self) -> Self {
+        let width = terminal_size::terminal_size()
+            .map(|(width, _height)| width.0 as usize)
+            .unwrap_or(80);
+
+        self.terminal_width(width)
+    }
+
     pub fn render<W: Write>(self, writer: &mut W) -> io::Result<()> {
         let Self {
             use_ascii,

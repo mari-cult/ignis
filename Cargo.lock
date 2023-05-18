@@ -94,9 +94,9 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "bitflags"
-version = "2.2.1"
+version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24a6904aef64d73cf10ab17ebace7befb918b82164785cb89907993be7f83813"
+checksum = "6776fc96284a0bb647b615056fc496d1fe1644a7ab01829818a6d91cae888b84"
 
 [[package]]
 name = "bytemuck"
@@ -348,7 +348,7 @@ dependencies = [
 name = "loopy"
 version = "0.0.0"
 dependencies = [
- "bitflags 2.2.1",
+ "bitflags 2.3.1",
  "nix",
  "once_cell",
 ]
@@ -360,14 +360,13 @@ dependencies = [
  "camino",
  "clap",
  "codespan-reporting",
- "milk-progress",
  "mocha_cargo",
+ "mocha_progress",
  "mocha_target",
  "mocha_utils",
  "petgraph",
  "serde",
  "serde_yaml",
- "terminal_size",
  "tokio",
  "walkdir",
 ]
@@ -379,10 +378,6 @@ dependencies = [
  "binrw",
  "loopy",
 ]
-
-[[package]]
-name = "milk-progress"
-version = "0.0.0"
 
 [[package]]
 name = "mio"
@@ -407,6 +402,13 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "mocha_progress"
+version = "0.0.0"
+dependencies = [
+ "terminal_size",
 ]
 
 [[package]]
@@ -473,9 +475,9 @@ checksum = "e0a7ae3ac2f1173085d398531c705756c94a4c56843785df85a60c1a0afac116"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.57"
+version = "1.0.58"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4ec6d5fe0b140acb27c9a0444118cf55bfbb4e0b259739429abb4521dd67c16"
+checksum = "fa1fb82fc0c281dd9671101b66b771ebbe1eaf967b96ac8740dcba4b70005ca8"
 dependencies = [
  "unicode-ident",
 ]

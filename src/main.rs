@@ -5,8 +5,8 @@ use {
         args::Args,
         index::{Index, Part},
     },
-    milk_progress::ProgressBars,
     mocha_cargo::Cargo,
+    mocha_progress::ProgressBars,
     mocha_target::Target,
     mocha_utils::{Category, Command, Rule, Stdio},
     std::{
@@ -107,19 +107,13 @@ async fn main() {
                                             break;
                                         }
                                     }
-
                                     _ = time.tick() => {
 
-                                let width = terminal_size::terminal_size()
-                                    .map(|(width, height)| width.0 as usize)
-                                    .unwrap_or(80);
-
-                                ProgressBars::new()
-                                    .add(&package, completed, total)
-                                    .terminal_width(width)
-                                    .render(&mut stdout)
-                                    .unwrap();
-
+                                        ProgressBars::new()
+                                            .add(&package, completed, total)
+                                            .auto_terminal_width()
+                                            .render(&mut stdout)
+                                            .unwrap();
                                     }
                                 }
                             }

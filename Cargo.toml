@@ -7,14 +7,13 @@ edition = "2021"
 camino = { version = "1.1.4", default-features = false }
 clap = { version = "4.2.7", default-features = false, features = ["color", "derive", "env", "help", "std", "suggestions", "unicode", "usage", "wrap_help"] }
 codespan-reporting = { version = "0.11.1", default-features = false }
-milk-progress = { version = "0.0.0", path = "crates/progress", default-features = false }
+mocha_progress = { version = "0.0.0", path = "crates/mocha_progress", default-features = false }
 mocha_cargo = { version = "0.0.0", path = "crates/mocha_cargo", default-features = false }
 mocha_target = { version = "0.0.0", path = "crates/mocha_target", default-features = false }
 mocha_utils = { version = "0.0.0", path = "crates/mocha_utils", default-features = false }
 petgraph = { version = "0.6.3", default-features = false }
 serde = { version = "1.0.160", default-features = false, features = ["derive", "std"] }
 serde_yaml = { version = "0.9.21", default-features = false }
-terminal_size = { version = "0.2.6", default-features = false }
 tokio = { version = "1.28.1", default-features = false, features = ["macros", "rt-multi-thread", "time"] }
 walkdir = { version = "2.3.3", default-features = false }
 
