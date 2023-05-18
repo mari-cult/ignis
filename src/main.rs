@@ -19,8 +19,16 @@ use {
 mod args;
 mod index;
 
-#[tokio::main]
-async fn main() {
+fn main() {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .thread_name(concat!(env!("CARGO_PKG_NAME"), "_worker"))
+        .build()
+        .unwrap()
+        .block_on(run())
+}
+
+async fn run() {
     let args = Args::parse();
 
     match args {
@@ -106,6 +114,8 @@ async fn add(package: &str, entry: &Entry) -> io::Result<()> {
     }
 
     for part in &entry.serialized.parts {
+        let start_time = Instant::now();
+
         match part {
             Part::Rust {
                 features,
@@ -171,6 +181,10 @@ async fn add(package: &str, entry: &Entry) -> io::Result<()> {
             }
             _ => {}
         }
+
+        let elapsed = start_time.elapsed();
+
+        println!("{}: Produced artifacts in {elapsed:.2?}", package.blue());
     }
 
     Ok(())

@@ -14,13 +14,9 @@ mocha_utils = { version = "0.0.0", path = "crates/mocha_utils", default-features
 petgraph = { version = "0.6.3", default-features = false }
 serde = { version = "1.0.160", default-features = false, features = ["derive", "std"] }
 serde_yaml = { version = "0.9.21", default-features = false }
-tokio = { version = "1.28.1", default-features = false, features = ["macros", "rt-multi-thread", "time"] }
+tokio = { version = "1.28.1", default-features = false, features = ["macros", "rt", "time"] }
 walkdir = { version = "2.3.3", default-features = false }
 crossterm = { version = "0.26.1", default-features = false }
-
-[profile.release]
-lto = "thin"
-strip = "symbols"
 
 [workspace]
 members = ["crates/*"]
