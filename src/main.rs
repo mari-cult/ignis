@@ -43,11 +43,41 @@ async fn run() {
                 if index.len() == 1 { "entry" } else { "entries" }
             );
 
+            let (packages, unknown_packages): (Vec<_>, Vec<_>) = packages
+                .into_iter()
+                .map(|package| {
+                    let entry = index.index.get(&*package);
+
+                    (package, entry)
+                })
+                .partition(|(_package, maybe_entry)| maybe_entry.is_some());
+
             let packages = packages
                 .into_iter()
-                .flat_map(|package| index.index.get(&*package).map(|entry| (package, entry)))
+                .flat_map(|(package, maybe_entry)| maybe_entry.map(|entry| (package, entry)))
                 .filter(|(_package, entry)| !entry.installed)
                 .collect::<Vec<_>>();
+
+            let unknown_packages = unknown_packages
+                .into_iter()
+                .map(|(package, _maybe_entry)| package)
+                .collect::<Vec<_>>();
+
+            if !unknown_packages.is_empty() {
+                let package_list = unknown_packages
+                    .into_iter()
+                    .map(|package| package.as_str().red().to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+
+                println!("Unknown packages: {package_list}");
+                return;
+            }
+
+            if packages.is_empty() {
+                println!("Nothing to do.");
+                return;
+            }
 
             let package_list = packages
                 .iter()
