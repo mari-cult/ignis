@@ -1,10 +1,10 @@
 use {
     binrw::{BinRead, BinWrite},
+    camino::Utf8Path,
+    mocha_utils::{Category, Command, Rule},
     std::{
         fs::{self, File},
         io::{self, BufWriter, Write},
-        path::Path,
-        process::Command,
     },
 };
 
@@ -16,28 +16,29 @@ struct Metadata {
     pub size: u64,
 }
 
-fn main() {
-    brew_mocha("uutils", "package").unwrap();
-    drink_mocha("uutils", "package").unwrap();
-}
-
-pub fn brew_mocha<P>(name: &str, directory: P) -> io::Result<()>
+/// Generate a Mocha image.
+pub async fn brew_mocha<S, D>(source: S, destination: D) -> io::Result<()>
 where
-    P: AsRef<Path>,
+    S: AsRef<Utf8Path>,
+    D: AsRef<Utf8Path>,
 {
-    let directory = directory.as_ref();
-    let erofs_name = format!("{name}.erofs");
-    let mocha_name = format!("{name}.mocha");
+    let source = source.as_ref();
+    let destination = destination.as_ref();
+    let erofs_name = destination.with_extension("erofs");
+    let mocha_name = destination.with_extension("mocha");
 
     // Generate erofs from a directory.
-    Command::new("mkfs.erofs")
+    Command::new("/usr/bin/mkfs.erofs")
         .arg("-T0")
-        .arg("--force-gid=9")
-        .arg("--force-uid=9")
-        .arg(&erofs_name)
-        .arg(&directory)
+        .arg("--force-gid=1")
+        .arg("--force-uid=1")
+        .arg(erofs_name.as_str())
+        .arg(source.as_str())
+        .execution_policy((Category::Network, Rule::Kill))
+        .execution_policy((Category::SetUsers, Rule::Kill))
         .spawn()?
-        .wait()?;
+        .wait()
+        .await?;
 
     // Create the mocha.
     let mocha = File::options()
@@ -46,7 +47,6 @@ where
         .open(&mocha_name)?;
 
     let mut mocha = BufWriter::new(mocha);
-
     let metadata = Metadata { size: 5 };
 
     metadata
@@ -67,9 +67,10 @@ where
     Ok(())
 }
 
+/// Mount a Mocha image.
 pub fn drink_mocha<P>(name: &str, directory: P) -> io::Result<()>
 where
-    P: AsRef<Path>,
+    P: AsRef<Utf8Path>,
 {
     let directory = directory.as_ref();
     let mocha_name = format!("{name}.mocha");

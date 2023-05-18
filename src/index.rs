@@ -59,7 +59,7 @@ impl Index {
         let mut index = HashMap::new();
         let mut mochas: HashMap<String, ()> = HashMap::new();
 
-        for entry in read_dir("/mocha/packages", 1) {
+        for entry in read_dir("/mocha/images", 1) {
             let Some(path) = Utf8Path::from_path(entry.path()) else {
                 continue;
             };

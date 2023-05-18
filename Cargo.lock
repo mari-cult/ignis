@@ -388,6 +388,7 @@ dependencies = [
  "codespan-reporting",
  "crossterm",
  "mocha_cargo",
+ "mocha_image",
  "mocha_progress",
  "mocha_target",
  "mocha_utils",
@@ -396,14 +397,6 @@ dependencies = [
  "serde_yaml",
  "tokio",
  "walkdir",
-]
-
-[[package]]
-name = "milk-package"
-version = "0.1.0"
-dependencies = [
- "binrw",
- "loopy",
 ]
 
 [[package]]
@@ -429,6 +422,16 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "mocha_image"
+version = "0.0.0"
+dependencies = [
+ "binrw",
+ "camino",
+ "loopy",
+ "mocha_utils",
 ]
 
 [[package]]

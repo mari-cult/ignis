@@ -107,6 +107,7 @@ async fn run() {
 
 async fn add(package: &str, entry: &Entry) -> io::Result<()> {
     let source_dir = Utf8Path::new("/mocha/sources").join(&package);
+    let image_dir = source_dir.join("image");
 
     // TODO: Figure out how to handle multiple sources.
     for source in &entry.serialized.sources {
@@ -143,6 +144,12 @@ async fn add(package: &str, entry: &Entry) -> io::Result<()> {
         println!("{}: Sync finished in {elapsed:.2?}.", package.blue());
     }
 
+    if !image_dir.is_dir() {
+        let _ = fs::remove_dir_all(&image_dir);
+
+        fs::create_dir_all(&image_dir)?;
+    }
+
     for part in &entry.serialized.parts {
         let start_time = Instant::now();
 
@@ -168,19 +175,20 @@ async fn add(package: &str, entry: &Entry) -> io::Result<()> {
 
                 println!("{}: Produces artifacts:", package.blue());
 
-                let artifacts = artifacts
+                let artifacts_list = artifacts
                     .into_iter()
                     .map(|string| string.to_string().yellow().to_string())
                     .collect::<Vec<_>>()
                     .join(", ");
 
-                println!("{}:   {artifacts}", package.blue());
+                println!("{}:   {artifacts_list}", package.blue());
 
-                let cargo = Cargo::new("/mari/.cargo/bin/cargo").unwrap();
+                let target = "x86_64-gnu".parse().unwrap();
+                let cargo = Cargo::new("/mari/.cargo/bin/cargo")?;
                 let mut child = cargo
                     .build(&source_dir)
                     .features(features)
-                    .target("x86_64-gnu".parse().unwrap())
+                    .target(target)
                     .spawn()?;
 
                 let mut stdout = BufWriter::new(io::stdout());
@@ -208,6 +216,16 @@ async fn add(package: &str, entry: &Entry) -> io::Result<()> {
                 }
 
                 println!();
+
+                for artifact in artifacts {
+                    let source = source_dir
+                        .join("target")
+                        .join(target.rust_triple())
+                        .join("release")
+                        .join(artifact);
+
+                    fs::copy(source, image_dir.join(artifact))?;
+                }
             }
             _ => {}
         }
@@ -216,6 +234,10 @@ async fn add(package: &str, entry: &Entry) -> io::Result<()> {
 
         println!("{}: Produced artifacts in {elapsed:.2?}", package.blue());
     }
+
+    let _ = fs::create_dir_all("/mocha/images");
+
+    mocha_image::brew_mocha(image_dir, format!("/mocha/images/{package}-unimplemented")).await?;
 
     Ok(())
 }
