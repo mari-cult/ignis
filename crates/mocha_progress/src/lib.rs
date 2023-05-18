@@ -1,4 +1,7 @@
-use std::io::{self, Write};
+use {
+    crossterm::style::Stylize,
+    std::io::{self, Write},
+};
 
 /// A single bar.
 struct Bar<'a> {
@@ -51,7 +54,7 @@ impl<'a> ProgressBars<'a> {
     }
 
     #[inline]
-    pub fn auto_terminal_width(mut self) -> Self {
+    pub fn auto_terminal_width(self) -> Self {
         let width = terminal_size::terminal_size()
             .map(|(width, _height)| width.0 as usize)
             .unwrap_or(80);
@@ -102,13 +105,17 @@ impl<'a> ProgressBars<'a> {
             total,
         } in bars
         {
+            const EMPTY: &str = "";
+
+            let label_padding = label_width - label.len();
+            let label = label.blue();
             let message = format!("{completed:completed_width$} / {total}");
             let repeat = ((completed as f32) / (total as f32) * (remaining_width as f32)) as usize;
             let bar = bar_character.repeat(repeat);
 
             write!(
                 writer,
-                "\r\x1b[K{label:label_width$} {bar:remaining_width$} {message}\x1b[1B"
+                "\r\x1b[K{label}{EMPTY:label_padding$} {bar:remaining_width$} {message}\x1b[1B"
             )?;
         }
 
