@@ -1,13 +1,13 @@
 [package]
-name = "milk-cargo"
+name = "mocha_cargo"
 version = "0.0.0"
 edition = "2021"
-
 
 [dependencies]
 camino = { version = "1.1.4", default-features = false }
 cargo_metadata = { version = "0.15.4", default-features = false }
-milk-target = { version = "0.0.0", path = "../target", default-features = false }
+mocha_target = { version = "0.0.0", path = "../mocha_target", default-features = false }
+mocha_utils = { version = "0.0.0", path = "../mocha_utils", default-features = false }
 serde = { version = "1.0.163", default-features = false, features = ["derive", "std"] }
 serde_json = { version = "1.0.96", default-features = false, features = ["std"] }
 tokio = { version = "1.28.1", default-features = false, features = ["io-util", "process"] }

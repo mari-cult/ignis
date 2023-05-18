@@ -73,13 +73,19 @@ impl<'a> ProgressBars<'a> {
             .max()
             .unwrap_or_default() as usize;
 
+        let remaining_width = terminal_width
+            .saturating_sub(label_width)
+            .saturating_sub(completed_width * 2)
+            .saturating_sub(9);
+
         let bar_count = bars.len();
 
-        // Reserve lines for the progress bar.
-        write!(writer, "{}", "\r\n\x1b[K".repeat(bar_count))?;
-
-        // Move back up.
-        write!(writer, "\r\x1b[{bar_count}A")?;
+        // Reserve lines for the progress bar(s), then move back up.
+        write!(
+            writer,
+            "{}\r\x1b[{bar_count}A",
+            "\r\n\x1b[K".repeat(bar_count)
+        )?;
 
         for Bar {
             label,
@@ -88,13 +94,12 @@ impl<'a> ProgressBars<'a> {
         } in bars
         {
             let message = format!("{completed:completed_width$} / {total}");
-            let remaining_width = terminal_width.saturating_sub(message.len() - 1);
             let repeat = ((completed as f32) / (total as f32) * (remaining_width as f32)) as usize;
             let bar = bar_character.repeat(repeat);
 
             write!(
                 writer,
-                "\r{label:label_width$} {bar:remaining_width$} {message}\x1b[1B"
+                "\r\x1b[K{label:label_width$} {bar:remaining_width$} {message}\x1b[1B"
             )?;
         }
 

@@ -12,7 +12,14 @@ use {
     tokio::process::{Child as TokioChild, Command as TokioCommand},
 };
 
-pub use policy::{Category, Policy, Rule};
+pub use {
+    crate::policy::{Category, Policy, Rule},
+    std::process::{
+        ChildStderr as BlockingChildStderr, ChildStdin as BlockingChildStdin,
+        ChildStdout as BlockingChildStdout, Output, Stdio,
+    },
+    tokio::process::{ChildStderr, ChildStdin, ChildStdout},
+};
 
 mod policy;
 mod sys;
@@ -28,6 +35,9 @@ pub struct Command {
     group_id: Option<u32>,
     group_ids: Vec<u32>,
     execution_policy: Policy,
+    stdin: Stdio,
+    stdout: Stdio,
+    stderr: Stdio,
 }
 
 /// Representation of a child process spawned onto an event loop.
@@ -57,6 +67,9 @@ impl Command {
             group_id: None,
             group_ids: Vec::new(),
             execution_policy: Policy::new(),
+            stdin: Stdio::inherit(),
+            stdout: Stdio::piped(),
+            stderr: Stdio::piped(),
         }
     }
 
@@ -152,6 +165,36 @@ impl Command {
         self
     }
 
+    /// Configuration for the child process’s standard input (stdin) handle.
+    #[inline]
+    pub fn stdin<S>(mut self, stdin: S) -> Self
+    where
+        S: Into<Stdio>,
+    {
+        self.stdin = stdin.into();
+        self
+    }
+
+    /// Configuration for the child process’s standard output (stdout) handle.
+    #[inline]
+    pub fn stdout<S>(mut self, stdout: S) -> Self
+    where
+        S: Into<Stdio>,
+    {
+        self.stdout = stdout.into();
+        self
+    }
+
+    /// Configuration for the child process’s standard error (stderr) handle.
+    #[inline]
+    pub fn stderr<S>(mut self, stderr: S) -> Self
+    where
+        S: Into<Stdio>,
+    {
+        self.stderr = stderr.into();
+        self
+    }
+
     /// Convert `Command` into an `std::process::Command`.
     fn into_command(self) -> StdCommand {
         let Self {
@@ -163,6 +206,9 @@ impl Command {
             group_id,
             group_ids,
             execution_policy,
+            stdin,
+            stdout,
+            stderr,
         } = self;
 
         let args = args.into_iter().map(OsString::from_vec);
@@ -172,7 +218,12 @@ impl Command {
 
         let mut command = StdCommand::new(program);
 
-        command.args(args).envs(envs);
+        command
+            .args(args)
+            .envs(envs)
+            .stdin(stdin)
+            .stdout(stdout)
+            .stderr(stderr);
 
         if let Some(current_dir) = current_dir {
             command.current_dir(current_dir);
@@ -212,39 +263,91 @@ impl Command {
 
         Ok(BlockingChild { child })
     }
+
+    #[inline]
+    pub async fn output(self) -> io::Result<Output> {
+        self.spawn()?.child.wait_with_output().await
+    }
+
+    #[inline]
+    pub fn output_blocking(self) -> io::Result<Output> {
+        self.into_command().output()
+    }
 }
 
 impl Child {
     /// Returns the OS-assigned process identifier associated with this child, while it is still running.
+    #[inline]
     pub fn id(&self) -> Option<u32> {
         self.child.id()
     }
 
     /// Forces the child to exit.
+    #[inline]
     pub async fn kill(&mut self) -> io::Result<()> {
         self.child.kill().await
     }
 
     /// Wait for the child process to exit completely, returnin the status that it exited with.
+    #[inline]
     pub async fn wait(&mut self) -> io::Result<ExitStatus> {
         self.child.wait().await
+    }
+
+    /// Take the child process’s standard input (stdin) handle.
+    #[inline]
+    pub fn stdin(&mut self) -> Option<ChildStdin> {
+        self.child.stdin.take()
+    }
+
+    /// Take the child process’s standard output (stdout) handle.
+    #[inline]
+    pub fn stdout(&mut self) -> Option<ChildStdout> {
+        self.child.stdout.take()
+    }
+
+    /// Take the child process’s standard error (stderr) handle.
+    #[inline]
+    pub fn stderr(&mut self) -> Option<ChildStderr> {
+        self.child.stderr.take()
     }
 }
 
 impl BlockingChild {
     /// Returns the OS-assigned process identifier associated with this child, while it is still running.
+    #[inline]
     pub fn id(&self) -> Option<u32> {
         Some(self.child.id())
     }
 
     /// Forces the child process to exit.
+    #[inline]
     pub fn kill(&mut self) -> io::Result<()> {
         self.child.kill()
     }
 
     /// Wait for the child process to exit completely, returnin the status that it exited with.
+    #[inline]
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         self.child.wait()
+    }
+
+    /// Take the child process’s standard input (stdin) handle.
+    #[inline]
+    pub fn stdin(&mut self) -> Option<BlockingChildStdin> {
+        self.child.stdin.take()
+    }
+
+    /// Take the child process’s standard output (stdout) handle.
+    #[inline]
+    pub fn stdout(&mut self) -> Option<BlockingChildStdout> {
+        self.child.stdout.take()
+    }
+
+    /// Take the child process’s standard error (stderr) handle.
+    #[inline]
+    pub fn stderr(&mut self) -> Option<BlockingChildStderr> {
+        self.child.stderr.take()
     }
 }
 

@@ -1,5 +1,5 @@
 [package]
-name = "milk-target"
+name = "mocha_target"
 version = "0.0.0"
 edition = "2021"
 
