@@ -8,7 +8,7 @@ macro_rules! impl_spec {
     ($ident:ident<$capacity:literal>) => {
         #[derive(Clone, Copy, Hash, Eq, Ord, PartialEq, PartialOrd)]
         #[repr(align($capacity))]
-        pub struct $ident(Ident<$capacity>);
+        pub struct $ident(Ident<{ $capacity - 1 }>);
 
         impl $ident {
             #[inline]
@@ -71,7 +71,7 @@ macro_rules! impl_spec {
 
             #[inline]
             fn try_from(ident: &str) -> Result<Self, Self::Error> {
-                <Ident<$capacity> as convert::TryFrom<&str>>::try_from(ident).map($ident)
+                <Ident<{ $capacity - 1 }> as convert::TryFrom<&str>>::try_from(ident).map($ident)
             }
         }
 
@@ -94,7 +94,7 @@ macro_rules! impl_spec {
 
             #[inline]
             fn from_str(ident: &str) -> Result<Self, Self::Err> {
-                <Ident<$capacity> as str::FromStr>::from_str(ident).map($ident)
+                <Ident<{ $capacity - 1 }> as str::FromStr>::from_str(ident).map($ident)
             }
         }
 
@@ -113,7 +113,9 @@ macro_rules! impl_spec {
             where
                 S: serde::Serializer,
             {
-                <Ident<$capacity> as serde::Serialize>::serialize(&self.0, serializer)
+                use serde::Serialize;
+
+                self.0.serialize(serializer)
             }
         }
 
@@ -123,7 +125,8 @@ macro_rules! impl_spec {
             where
                 D: serde::Deserializer<'de>,
             {
-                <Ident<$capacity> as serde::Deserialize>::deserialize(deserializer).map($ident)
+                <Ident<{ $capacity - 1 }> as serde::Deserialize>::deserialize(deserializer)
+                    .map($ident)
             }
         }
     };
