@@ -133,5 +133,5 @@ macro_rules! impl_spec {
 impl_spec!(ArtifactIdent<64>);
 impl_spec!(PackageIdent<64>);
 impl_spec!(RepositoryIdent<32>);
-impl_spec!(FeatureIdent<32>);
+impl_spec!(FeatureIdent<128>);
 impl_spec!(SourceIdent<128>);

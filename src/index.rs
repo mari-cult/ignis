@@ -104,7 +104,7 @@ impl Index {
             let serialized = match serde_yaml::from_str(&content) {
                 Ok(serialized) => serialized,
                 Err(error) => {
-                    println!("{name}: {error:?}");
+                    eprintln!("{name}: {error:?}");
 
                     continue;
                 }
