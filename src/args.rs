@@ -1,6 +1,7 @@
 use {
     camino::Utf8PathBuf,
     clap::{Parser, ValueHint},
+    mocha_ident::spec::{PackageIdent, RepositoryIdent},
 };
 
 /// Mocha's package manager.
@@ -21,7 +22,7 @@ pub enum Args {
         /// Set of packages.
         #[arg(required = true)]
         #[arg(value_name = "PACKAGE")]
-        packages: Vec<String>,
+        packages: Vec<PackageIdent>,
     },
 
     /// Format package specifications.
@@ -42,7 +43,7 @@ pub enum Args {
         /// Set of repositories.
         #[arg(required = true)]
         #[arg(value_name = "REPO")]
-        repositories: Vec<String>,
+        repositories: Vec<RepositoryIdent>,
     },
 }
 

@@ -46,7 +46,7 @@ async fn run() {
             let (packages, unknown_packages): (Vec<_>, Vec<_>) = packages
                 .into_iter()
                 .map(|package| {
-                    let entry = index.index.get(&*package);
+                    let entry = index.index.get(&package);
 
                     (package, entry)
                 })
@@ -129,10 +129,7 @@ async fn add(package: &str, entry: &Entry) -> io::Result<()> {
 
             fs::create_dir_all(&source_dir)?;
 
-            git.arg("clone")
-                .arg("--depth=1")
-                .arg(source.clone())
-                .arg(".")
+            git.arg("clone").arg("--depth=1").arg(source).arg(".")
         } else {
             git.arg("pull").arg("--depth=1")
         };

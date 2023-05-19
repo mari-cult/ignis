@@ -1,5 +1,6 @@
 use {
     camino::Utf8Path,
+    mocha_ident::spec::{ArtifactIdent, FeatureIdent, PackageIdent, RepositoryIdent, SourceIdent},
     petgraph::Graph,
     serde::{Deserialize, Serialize},
     std::{
@@ -10,7 +11,7 @@ use {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Serialized {
-    pub sources: BTreeSet<String>,
+    pub sources: BTreeSet<SourceIdent>,
     pub parts: Vec<Part>,
 }
 
@@ -19,54 +20,52 @@ pub struct Serialized {
 pub enum Part {
     Rust {
         #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
-        features: BTreeSet<String>,
+        features: BTreeSet<FeatureIdent>,
         #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
-        depends: BTreeSet<String>,
-        artifacts: BTreeSet<String>,
+        depends: BTreeSet<PackageIdent>,
+        artifacts: BTreeSet<ArtifactIdent>,
     },
     CCpp {
         #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
-        depends: BTreeSet<String>,
-        artifacts: BTreeSet<String>,
+        depends: BTreeSet<PackageIdent>,
+        artifacts: BTreeSet<ArtifactIdent>,
     },
     Copy {
         #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
-        depends: BTreeSet<String>,
-        artifacts: BTreeSet<String>,
+        depends: BTreeSet<PackageIdent>,
+        artifacts: BTreeSet<ArtifactIdent>,
     },
     Zig {
         #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
-        depends: BTreeSet<String>,
-        artifacts: BTreeSet<String>,
+        depends: BTreeSet<PackageIdent>,
+        artifacts: BTreeSet<ArtifactIdent>,
     },
 }
 
 #[derive(Debug)]
 pub struct Entry {
     pub installed: bool,
-    pub repository: Box<str>,
+    pub repository: RepositoryIdent,
     pub serialized: Serialized,
 }
 
 pub struct Index {
-    pub graph: Graph<Box<str>, Box<str>>,
-    pub index: HashMap<Box<str>, Entry>,
+    pub graph: Graph<PackageIdent, Box<str>>,
+    pub index: HashMap<PackageIdent, Entry>,
 }
 
 impl Index {
     pub fn open() -> io::Result<Self> {
         let mut graph = Graph::new();
         let mut index = HashMap::new();
-        let mut mochas: HashMap<String, ()> = HashMap::new();
+        let mut mochas: HashMap<PackageIdent, ()> = HashMap::new();
 
         for entry in read_dir("/mocha/images", 1) {
-            let Some(path) = Utf8Path::from_path(entry.path()) else {
+            let Some(path) = path_utf8(&entry) else {
                 continue;
             };
 
-            let name = unsafe { path.file_name().unwrap_unchecked() };
-
-            let Some((name, "mocha")) = name.rsplit_once('.') else {
+            let Some((name, "mocha")) = file_stem_extension(path) else {
                 continue;
             };
 
@@ -74,19 +73,21 @@ impl Index {
                 continue;
             };
 
-            mochas.insert(name.into(), ());
+            let name = name.parse().unwrap();
+
+            mochas.insert(name, ());
         }
 
         for entry in read_dir("/mocha/repositories", 2) {
-            let Some(path) = Utf8Path::from_path(entry.path()) else {
+            let Some(path) = path_utf8(&entry) else {
                 continue;
             };
 
-            let name = unsafe { path.file_name().unwrap_unchecked() };
-
-            let Some((name, "spec")) = name.rsplit_once('.') else {
+            let Some((name, "spec")) = file_stem_extension(path) else {
                 continue;
             };
+
+            let name = name.parse().unwrap();
 
             // SAFETY: minimum depth enforces a parent to exist.
             let repository = unsafe {
@@ -109,13 +110,13 @@ impl Index {
                 }
             };
 
-            graph.add_node(Box::from(name));
+            graph.add_node(name);
 
             index.insert(
-                Box::from(name),
+                name,
                 Entry {
-                    installed: mochas.contains_key(&name.to_string()),
-                    repository: Box::from(repository),
+                    installed: mochas.contains_key(&name),
+                    repository: repository.parse().unwrap(),
                     serialized,
                 },
             );
@@ -145,4 +146,14 @@ fn read_dir(dir: &str, depth: usize) -> impl Iterator<Item = walkdir::DirEntry> 
         .into_iter()
         .flatten()
         .filter(|entry| entry.file_type().is_file())
+}
+
+fn path_utf8(entry: &walkdir::DirEntry) -> Option<&Utf8Path> {
+    Utf8Path::from_path(entry.path())
+}
+
+fn file_stem_extension<'a>(path: &'a Utf8Path) -> Option<(&'a str, &'a str)> {
+    let file_name = path.file_name()?;
+
+    file_name.rsplit_once('.')
 }

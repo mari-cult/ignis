@@ -388,6 +388,7 @@ dependencies = [
  "codespan-reporting",
  "crossterm",
  "mocha_cargo",
+ "mocha_ident",
  "mocha_image",
  "mocha_progress",
  "mocha_target",
@@ -422,6 +423,14 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "mocha_ident"
+version = "0.0.0"
+dependencies = [
+ "camino",
+ "serde",
 ]
 
 [[package]]
