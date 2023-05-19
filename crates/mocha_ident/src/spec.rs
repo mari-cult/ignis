@@ -113,8 +113,6 @@ macro_rules! impl_spec {
             where
                 S: serde::Serializer,
             {
-                use serde::Serialize;
-
                 self.0.serialize(serializer)
             }
         }

@@ -96,17 +96,17 @@ async fn run() {
                 }
             }
         }
-        Args::Fmt { specs } => {
+        Args::Fmt { specs: _ } => {
             //
         }
-        Args::Sync { repositories } => {
+        Args::Sync { repositories: _ } => {
             //
         }
     }
 }
 
 async fn add(package: &str, entry: &Entry) -> io::Result<()> {
-    let source_dir = Utf8Path::new("/mocha/sources").join(&package);
+    let source_dir = Utf8Path::new("/mocha/sources").join(package);
     let image_dir = source_dir.join("image");
 
     // TODO: Figure out how to handle multiple sources.
@@ -153,7 +153,7 @@ async fn add(package: &str, entry: &Entry) -> io::Result<()> {
         match part {
             Part::Rust {
                 features,
-                depends,
+                depends: _,
                 artifacts,
             } => {
                 println!("{}: Using {}.", package.blue(), "rust".green());
@@ -162,7 +162,7 @@ async fn add(package: &str, entry: &Entry) -> io::Result<()> {
                     println!("{}: With features:", package.blue());
 
                     let features = features
-                        .into_iter()
+                        .iter()
                         .map(|string| string.to_string().yellow().to_string())
                         .collect::<Vec<_>>()
                         .join(", ");
@@ -173,7 +173,7 @@ async fn add(package: &str, entry: &Entry) -> io::Result<()> {
                 println!("{}: Produces artifacts:", package.blue());
 
                 let artifacts_list = artifacts
-                    .into_iter()
+                    .iter()
                     .map(|string| string.to_string().yellow().to_string())
                     .collect::<Vec<_>>()
                     .join(", ");
@@ -205,7 +205,7 @@ async fn add(package: &str, entry: &Entry) -> io::Result<()> {
                         }
                         _ = time.tick() => {
                             ProgressBars::new()
-                                .add(&package, status.0, status.1)
+                                .add(package, status.0, status.1)
                                 .auto_terminal_width()
                                 .render(&mut stdout)?;
                         }

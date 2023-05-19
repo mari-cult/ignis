@@ -152,7 +152,7 @@ fn path_utf8(entry: &walkdir::DirEntry) -> Option<&Utf8Path> {
     Utf8Path::from_path(entry.path())
 }
 
-fn file_stem_extension<'a>(path: &'a Utf8Path) -> Option<(&'a str, &'a str)> {
+fn file_stem_extension(path: &Utf8Path) -> Option<(&str, &str)> {
     let file_name = path.file_name()?;
 
     file_name.rsplit_once('.')

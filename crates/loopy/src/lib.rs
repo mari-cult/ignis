@@ -21,6 +21,7 @@ pub struct Loop {
 }
 
 /// Options for opening a loop device.
+#[derive(Default)]
 pub struct LoopOptions {
     options: os::LoopOptions,
 }
@@ -37,9 +38,7 @@ impl LoopOptions {
     /// Create an empty set of options.
     #[inline]
     pub fn new() -> Self {
-        Self {
-            options: os::LoopOptions::default(),
-        }
+        Self::default()
     }
 
     #[inline]
