@@ -1,0 +1,10 @@
+[package]
+name = "mocha_fs"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+bitflags = { version = "2.3.1", default-features = false }
+camino = { version = "1.1.4", default-features = false }
+rustix = { version = "0.37.19", default-features = false, features = ["fs", "std"] }
+walkdir = { version = "2.3.3", default-features = false }

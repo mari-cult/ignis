@@ -5,7 +5,7 @@ use {
     std::{
         fs::File,
         io,
-        path::Path,
+        path::{Path, PathBuf},
         sync::{Arc, Mutex},
     },
 };
@@ -16,7 +16,7 @@ static CONTROL: OnceCell<Arc<Mutex<os::LoopControl>>> = OnceCell::new();
 
 /// A loop device.
 pub struct Loop {
-    _device: os::Loop,
+    device: os::Loop,
     _file: File,
 }
 
@@ -31,6 +31,18 @@ impl Loop {
     #[inline]
     pub fn options() -> LoopOptions {
         LoopOptions::new()
+    }
+
+    #[inline]
+    pub fn index(&self) -> u32 {
+        self.device.index()
+    }
+
+    #[inline]
+    pub fn path(&self) -> PathBuf {
+        let index = self.index();
+
+        format!("/dev/loop{index}").into()
     }
 }
 
@@ -98,7 +110,7 @@ impl LoopOptions {
             device.set_file(&file, options.options)?;
 
             Ok(Loop {
-                _device: device,
+                device,
                 _file: file,
             })
         }

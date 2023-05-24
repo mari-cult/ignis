@@ -25,7 +25,7 @@ pub enum Category {
     SetUsers,
 }
 
-/// Execution policy for [`Command`](crate::Command).
+/// Execution policy for [`Command`](super::Command).
 pub struct Policy {
     network_rule: Option<Rule>,
     users_rule: Option<Rule>,

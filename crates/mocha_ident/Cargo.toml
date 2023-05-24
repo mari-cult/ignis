@@ -4,5 +4,7 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-camino = { version = "1.1.4", default-features = false }
+mocha_fs = { version = "0.0.0", path = "../mocha_fs", default-features = false }
 serde = { version = "1.0.163", default-features = false, features = ["std"] }
+thiserror = { version = "1.0.40", default-features = false }
+url = { version = "2.3.1", default-features = false }

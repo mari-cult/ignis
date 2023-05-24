@@ -4,8 +4,11 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-camino = { version = "1.1.4", default-features = false }
+mocha_fs = { version = "0.0.0", path = "../mocha_fs", default-features = false }
+mocha_ident = { version = "0.0.0", path = "../mocha_ident", default-features = false }
+mocha_target = { version = "0.0.0", path = "../mocha_target", default-features = false }
 nix = { version = "0.26.2", default-features = false, features = ["user"] }
 sc = { version = "0.2.7", default-features = false }
 seccomp = { version = "0.1.2", default-features = false }
+thiserror = { version = "1.0.40", default-features = false }
 tokio = { version = "1.28.1", default-features = false, features = ["process"] }

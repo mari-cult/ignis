@@ -15,6 +15,7 @@ pub struct LoopControl {
 #[derive(Debug)]
 pub struct Loop {
     device: File,
+    index: u32,
 }
 
 bitflags::bitflags! {
@@ -79,13 +80,13 @@ impl LoopControl {
     pub fn next(&mut self) -> io::Result<Loop> {
         nix::ioctl_none_bad!(loop_ctl_get_free, 0x4C82);
 
-        let index = unsafe { loop_ctl_get_free(self.device.as_raw_fd())? };
+        let index = unsafe { loop_ctl_get_free(self.device.as_raw_fd())? } as u32;
         let device = File::options()
             .read(true)
             .write(true)
             .open(format!("/dev/loop{index}"))?;
 
-        Ok(Loop { device })
+        Ok(Loop { device, index })
     }
 }
 
@@ -111,6 +112,10 @@ impl Loop {
         }
 
         Ok(())
+    }
+
+    pub fn index(&self) -> u32 {
+        self.index
     }
 }
 

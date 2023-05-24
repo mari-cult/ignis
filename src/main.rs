@@ -1,23 +1,13 @@
-use camino::Utf8Path;
+//#![deny(warnings)]
 
-use {
-    crate::{
-        args::Args,
-        index::{Entry, Index, Part},
-    },
-    crossterm::style::Stylize,
-    mocha_cargo::Cargo,
-    mocha_progress::ProgressBars,
-    mocha_utils::{Category, Command, Rule, Stdio},
-    std::{
-        fs,
-        io::{self, BufWriter},
-        time::Instant,
-    },
-};
+use crossterm::style::Stylize;
+
+pub use crate::{args::Args, index::Index, milk::Milk};
+
+pub(crate) mod index;
+pub(crate) mod milk;
 
 mod args;
-mod index;
 
 fn main() {
     tokio::runtime::Builder::new_current_thread()
@@ -30,69 +20,92 @@ fn main() {
 
 async fn run() {
     let args = Args::parse();
+    let milk = Milk::new("/mocha");
 
     match args {
         Args::Add { packages } => {
-            let start_time = Instant::now();
-            let index = Index::open().unwrap();
-            let elapsed = start_time.elapsed();
-
-            println!(
-                "Package index loaded in {elapsed:.2?} ({} {}).",
-                index.len(),
-                if index.len() == 1 { "entry" } else { "entries" }
-            );
-
-            let (packages, unknown_packages): (Vec<_>, Vec<_>) = packages
-                .into_iter()
-                .map(|package| {
-                    let entry = index.index.get(&package);
-
-                    (package, entry)
-                })
-                .partition(|(_package, maybe_entry)| maybe_entry.is_some());
-
-            let packages = packages
-                .into_iter()
-                .flat_map(|(package, maybe_entry)| maybe_entry.map(|entry| (package, entry)))
-                .filter(|(_package, entry)| !entry.installed)
-                .collect::<Vec<_>>();
-
-            let unknown_packages = unknown_packages
-                .into_iter()
-                .map(|(package, _maybe_entry)| package)
-                .collect::<Vec<_>>();
-
-            if !unknown_packages.is_empty() {
-                let package_list = unknown_packages
+            let index = milk.open_index().unwrap();
+            let packages = match index.resolve(packages) {
+                Ok(packages) => packages
                     .into_iter()
-                    .map(|package| package.as_str().red().to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ");
+                    .filter(|package| !package.is_installed())
+                    .collect::<Vec<_>>(),
+                Err(unknown_packages) => {
+                    let list = unknown_packages
+                        .into_iter()
+                        .map(|package| package.as_str().red().to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ");
 
-                println!("Unknown packages: {package_list}");
-                return;
-            }
+                    println!("Unknown packages: {list}");
+
+                    return;
+                }
+            };
 
             if packages.is_empty() {
                 println!("Nothing to do.");
+
                 return;
             }
 
-            let package_list = packages
+            let list = packages
                 .iter()
-                .map(|(package, _entry)| package.as_str().blue().to_string())
+                .map(|package| package.ident().as_str().blue().to_string())
                 .collect::<Vec<_>>()
                 .join(", ");
 
-            println!("To be installed: {package_list}");
+            println!("To be installed: {list}");
 
-            for (package, entry) in packages {
-                let result = add(&package, entry).await;
+            for package in packages {
+                /*let result = add(&ident, entry).await;
 
                 match result {
-                    Ok(()) => println!("Installed: {package}"),
-                    Err(error) => println!("Failed to install {package}: {error}"),
+                    Ok(()) => println!("Installed: {ident}"),
+                    Err(error) => println!("Failed to install {ident}: {error}"),
+                }*/
+            }
+        }
+        Args::Del { packages } => {
+            let index = milk.open_index().unwrap();
+            let packages = match index.resolve(packages) {
+                Ok(packages) => packages
+                    .into_iter()
+                    .filter(|package| package.is_installed())
+                    .collect::<Vec<_>>(),
+                Err(unknown_packages) => {
+                    let list = unknown_packages
+                        .into_iter()
+                        .map(|package| package.as_str().red().to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+
+                    println!("Unknown packages: {list}");
+
+                    return;
+                }
+            };
+
+            if packages.is_empty() {
+                println!("Nothing to do.");
+
+                return;
+            }
+
+            let list = packages
+                .iter()
+                .map(|package| package.ident().as_str().blue().to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            println!("To be uninstalled: {list}");
+
+            for package in packages {
+                let ident = package.ident();
+                let prefix = ident.as_str().blue();
+
+                if let Err(error) = package.uninstall() {
+                    println!("error: Failed to uninstall {prefix}: {error}");
                 }
             }
         }
@@ -105,17 +118,14 @@ async fn run() {
     }
 }
 
-async fn add(package: &str, entry: &Entry) -> io::Result<()> {
+/*async fn add(package: &Package) -> io::Result<()> {
     let source_dir = Utf8Path::new("/mocha/sources").join(package);
     let image_dir = source_dir.join("image");
+    let prefix = package.blue();
 
     // TODO: Figure out how to handle multiple sources.
     for source in &entry.serialized.sources {
-        println!(
-            "{}: Syncing {}.",
-            package.blue(),
-            format!("{source:?}").green()
-        );
+        println!("{prefix}: Syncing {}.", format!("{source:?}").green());
 
         let start_time = Instant::now();
         let git = Command::new("/usr/bin/git")
@@ -138,7 +148,7 @@ async fn add(package: &str, entry: &Entry) -> io::Result<()> {
 
         let elapsed = start_time.elapsed();
 
-        println!("{}: Sync finished in {elapsed:.2?}.", package.blue());
+        println!("{prefix}: Sync finished in {elapsed:.2?}.");
     }
 
     if !image_dir.is_dir() {
@@ -146,6 +156,8 @@ async fn add(package: &str, entry: &Entry) -> io::Result<()> {
 
         fs::create_dir_all(&image_dir)?;
     }
+
+    let mut permissions = Permissions::empty();
 
     for part in &entry.serialized.parts {
         let start_time = Instant::now();
@@ -156,10 +168,10 @@ async fn add(package: &str, entry: &Entry) -> io::Result<()> {
                 depends: _,
                 artifacts,
             } => {
-                println!("{}: Using {}.", package.blue(), "rust".green());
+                println!("{prefix}: Using {}.", "rust".green());
 
                 if !features.is_empty() {
-                    println!("{}: With features:", package.blue());
+                    println!("{prefix}: With features:");
 
                     let features = features
                         .iter()
@@ -167,10 +179,10 @@ async fn add(package: &str, entry: &Entry) -> io::Result<()> {
                         .collect::<Vec<_>>()
                         .join(", ");
 
-                    println!("{}:   {features}", package.blue());
+                    println!("{prefix}:   {features}");
                 }
 
-                println!("{}: Produces artifacts:", package.blue());
+                println!("{prefix}: Produces artifacts:");
 
                 let artifacts_list = artifacts
                     .iter()
@@ -178,7 +190,7 @@ async fn add(package: &str, entry: &Entry) -> io::Result<()> {
                     .collect::<Vec<_>>()
                     .join(", ");
 
-                println!("{}:   {artifacts_list}", package.blue());
+                println!("{prefix}:   {artifacts_list}");
 
                 let target = "x86_64-gnu".parse().unwrap();
                 let cargo = Cargo::new("/mari/.cargo/bin/cargo")?;
@@ -215,13 +227,29 @@ async fn add(package: &str, entry: &Entry) -> io::Result<()> {
                 println!();
 
                 for artifact in artifacts {
-                    let source = source_dir
-                        .join("target")
-                        .join(target.rust_triple())
-                        .join("release")
-                        .join(artifact);
+                    if let Some((link_name, source)) = artifact.split_once(" -> ") {
+                        use std::os::unix::fs::symlink;
 
-                    fs::copy(source, image_dir.join(artifact))?;
+                        symlink(source, image_dir.join(link_name))?;
+
+                        println!(
+                            "{prefix}: Symlink {link_name} -> {source}",
+                            link_name = link_name.cyan(),
+                            source = source.green(),
+                        );
+                    } else {
+                        let source = source_dir
+                            .join("target")
+                            .join(target.rust_triple())
+                            .join("release")
+                            .join(artifact);
+
+                        fs::copy(source, image_dir.join(artifact))?;
+
+                        permissions.insert(Permissions::EXECUTE);
+
+                        println!("{prefix}: Binary {binary}", binary = artifact.green());
+                    }
                 }
             }
             _ => {}
@@ -229,12 +257,15 @@ async fn add(package: &str, entry: &Entry) -> io::Result<()> {
 
         let elapsed = start_time.elapsed();
 
-        println!("{}: Produced artifacts in {elapsed:.2?}", package.blue());
+        println!("{prefix}: Produced artifacts in {elapsed:.2?}");
     }
 
     let _ = fs::create_dir_all("/mocha/images");
+    let _ = fs::create_dir_all(&system_path);
 
-    mocha_image::brew_mocha(image_dir, format!("/mocha/images/{package}-unimplemented")).await?;
+    mocha_image::brew_mocha(image_dir, &mocha_path, permissions).await?;
+    mocha_image::drink_mocha(mocha_path, system_path)?;
 
     Ok(())
 }
+*/

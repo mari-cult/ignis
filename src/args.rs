@@ -1,7 +1,7 @@
 use {
-    camino::Utf8PathBuf,
     clap::{Parser, ValueHint},
-    mocha_ident::spec::{PackageIdent, RepositoryIdent},
+    mocha_fs::Utf8PathBuf,
+    mocha_ident::{PackageIdent, RepositoryIdent},
 };
 
 /// Mocha's package manager.
@@ -19,6 +19,16 @@ pub enum Args {
     #[command(arg_required_else_help = true)]
     #[command(verbatim_doc_comment)]
     Add {
+        /// Set of packages.
+        #[arg(required = true)]
+        #[arg(value_name = "PACKAGE")]
+        packages: Vec<PackageIdent>,
+    },
+
+    /// Uninstall packages.
+    #[command(arg_required_else_help = true)]
+    #[command(verbatim_doc_comment)]
+    Del {
         /// Set of packages.
         #[arg(required = true)]
         #[arg(value_name = "PACKAGE")]

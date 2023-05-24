@@ -4,21 +4,27 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-camino = { version = "1.1.4", default-features = false }
 clap = { version = "4.2.7", default-features = false, features = ["color", "derive", "env", "help", "std", "suggestions", "unicode", "usage", "wrap_help"] }
 codespan-reporting = { version = "0.11.1", default-features = false }
 crossterm = { version = "0.26.1", default-features = false }
+itertools = { version = "0.10.5", default-features = false, features = ["use_std"] }
 mocha_cargo = { version = "0.0.0", path = "crates/mocha_cargo", default-features = false }
+mocha_fs = { version = "0.0.0", path = "crates/mocha_fs", default-features = false }
 mocha_ident = { version = "0.0.0", path = "crates/mocha_ident", default-features = false }
 mocha_image = { version = "0.0.0", path = "crates/mocha_image", default-features = false }
 mocha_progress = { version = "0.0.0", path = "crates/mocha_progress", default-features = false }
 mocha_target = { version = "0.0.0", path = "crates/mocha_target", default-features = false }
 mocha_utils = { version = "0.0.0", path = "crates/mocha_utils", default-features = false }
 petgraph = { version = "0.6.3", default-features = false }
+rustix = { version = "0.37.19", default-features = false, features = ["fs"] }
 serde = { version = "1.0.160", default-features = false, features = ["derive", "std"] }
 serde_yaml = { version = "0.9.21", default-features = false }
 tokio = { version = "1.28.1", default-features = false, features = ["macros", "rt", "time"] }
 walkdir = { version = "2.3.3", default-features = false }
+
+[profile.release]
+lto = "fat"
+strip = "symbols"
 
 [workspace]
 members = ["crates/*"]

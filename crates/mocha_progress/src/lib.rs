@@ -1,3 +1,5 @@
+#![deny(warnings)]
+
 use {
     crossterm::style::Stylize,
     std::io::{self, Write},
@@ -36,11 +38,9 @@ impl<'a> ProgressBars<'a> {
 
     #[inline]
     pub fn add(mut self, label: &'a str, completed: usize, total: usize) -> Self {
-        assert!(completed <= total);
-
         self.bars.push(Bar {
             label,
-            completed,
+            completed: completed.min(total),
             total,
         });
 

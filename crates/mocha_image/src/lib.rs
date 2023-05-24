@@ -1,23 +1,61 @@
+#![deny(warnings)]
+
 use {
     binrw::{BinRead, BinWrite},
-    camino::Utf8Path,
-    mocha_utils::{Category, Command, Rule},
+    mocha_fs::Utf8Path,
+    mocha_utils::process::{Category, Command, Rule},
+    rustix::{cstr, fs::MountFlags},
     std::{
         fs::{self, File},
-        io::{self, BufWriter, Write},
+        io::{self, Error, ErrorKind, Write},
     },
 };
+
+/// Default mount flags for Mocha images.
+const DEFAULT_FLAGS: MountFlags = MountFlags::NOATIME
+    .union(MountFlags::NODEV)
+    .union(MountFlags::NODIRATIME)
+    .union(MountFlags::NOEXEC)
+    .union(MountFlags::NOSUID)
+    .union(MountFlags::RDONLY);
+
+bitflags::bitflags! {
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    pub struct Permissions: u64 {
+        const EXECUTE = 1 << 0;
+        const SET_USERS = 1 << 1;
+    }
+}
 
 #[binrw::binrw]
 #[derive(Debug)]
 #[brw(magic = b"MOCHA", little)]
-struct Metadata {
+pub struct Metadata {
+    #[br(try_map = read_permissions)]
+    #[bw(map = Permissions::bits)]
+    permissions: Permissions,
+
     #[brw(align_after = 1024)]
-    pub size: u64,
+    _alignment: (),
+}
+
+impl Metadata {
+    #[inline]
+    pub fn new(permissions: Permissions) -> Self {
+        Self {
+            permissions,
+            _alignment: (),
+        }
+    }
+
+    #[inline]
+    pub fn permissions(&self) -> Permissions {
+        self.permissions
+    }
 }
 
 /// Generate a Mocha image.
-pub async fn brew_mocha<S, D>(source: S, destination: D) -> io::Result<()>
+pub async fn brew_mocha<S, D>(source: S, destination: D, permissions: Permissions) -> io::Result<()>
 where
     S: AsRef<Utf8Path>,
     D: AsRef<Utf8Path>,
@@ -40,14 +78,8 @@ where
         .wait()
         .await?;
 
-    // Create the mocha.
-    let mocha = File::options()
-        .create_new(true)
-        .write(true)
-        .open(&mocha_name)?;
-
-    let mut mocha = BufWriter::new(mocha);
-    let metadata = Metadata { size: 5 };
+    let mut mocha = mocha_fs::create_new_buffered(&mocha_name)?;
+    let metadata = Metadata::new(permissions);
 
     metadata
         .write(&mut mocha)
@@ -67,23 +99,53 @@ where
     Ok(())
 }
 
-/// Mount a Mocha image.
-pub fn drink_mocha<P>(name: &str, directory: P) -> io::Result<()>
+/// Read a Mocha image's metadata.
+pub fn mocha_metadata<P>(path: P) -> io::Result<Metadata>
 where
     P: AsRef<Utf8Path>,
 {
-    let directory = directory.as_ref();
-    let mocha_name = format!("{name}.mocha");
-    let mut mocha = File::open(&mocha_name)?;
-    let metadata = Metadata::read(&mut mocha)
-        .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
+    let mut mocha = mocha_fs::open_buffered(path)?;
+    let metadata =
+        Metadata::read(&mut mocha).map_err(|error| Error::new(ErrorKind::InvalidData, error))?;
 
-    println!("{metadata:?}");
+    Ok(metadata)
+}
 
-    loopy::Loop::options()
+/// Mount a Mocha image.
+pub fn drink_mocha<S, D>(source: S, destination: D) -> io::Result<()>
+where
+    S: AsRef<Utf8Path>,
+    D: AsRef<Utf8Path>,
+{
+    let source = source.as_ref();
+    let destination = destination.as_ref();
+    let metadata = mocha_metadata(source)?;
+    let device = loopy::Loop::options()
         .offset(1024)
         .read_only(true)
-        .open(mocha_name)?;
+        .open(source)?;
+
+    let permissions = metadata.permissions();
+    let noexec = !permissions.contains(Permissions::EXECUTE);
+    let nosuid = !permissions.contains(Permissions::SET_USERS);
+    let mut flags = DEFAULT_FLAGS;
+
+    flags.set(MountFlags::NOEXEC, noexec);
+    flags.set(MountFlags::NOSUID, nosuid);
+
+    rustix::fs::mount(
+        device.path(),
+        destination.as_std_path(),
+        cstr!("erofs"),
+        flags,
+        cstr!(""),
+    )?;
 
     Ok(())
+}
+
+/// Attempt to read a `u64` as `Permissions`.
+#[inline]
+fn read_permissions(permissions: u64) -> Result<Permissions, &'static str> {
+    Permissions::from_bits(permissions).ok_or("invalid permissions")
 }

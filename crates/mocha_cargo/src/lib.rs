@@ -1,19 +1,18 @@
 #![deny(warnings)]
 
 use {
-    camino::{Utf8Path, Utf8PathBuf},
     cargo_metadata::Message,
+    mocha_fs::{Utf8Path, Utf8PathBuf},
     mocha_target::Target,
-    mocha_utils::{Category, Command, Rule},
+    mocha_utils::process::{self, Category, Command, Rule, Stdio},
     serde::Deserialize,
     std::{
         collections::BTreeSet,
-        fmt, fs,
+        fs,
         future::Future,
         io::{self, Cursor},
         os::unix::fs::PermissionsExt,
         pin::Pin,
-        process::Stdio,
         ptr,
         task::{Context, Poll},
     },
@@ -40,12 +39,12 @@ pub struct Build {
 
 enum ChildState {
     Plan {
-        output: Pin<Box<dyn Future<Output = io::Result<mocha_utils::Output>>>>,
-        child: mocha_utils::Child,
+        output: Pin<Box<dyn Future<Output = io::Result<process::Output>>>>,
+        child: process::Child,
         stdout: Lines<BufReader<ChildStdout>>,
     },
     Build {
-        child: mocha_utils::Child,
+        child: process::Child,
         stdout: Lines<BufReader<ChildStdout>>,
         completed: usize,
         total: usize,
@@ -197,7 +196,7 @@ impl Future for ChildState {
     type Output = io::Result<Option<(usize, usize)>>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        // Ceeating a bitwise-copy is necessary to advance the state machine.
+        // Creating a bitwise-copy is necessary to advance the state machine.
         let (state, poll) = match unsafe { ptr::read(self.as_mut().get_unchecked_mut()) } {
             ChildState::Plan {
                 mut output,
@@ -294,39 +293,14 @@ impl Child {
     }
 }
 
-impl fmt::Debug for ChildState {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ChildState::Plan { child, stdout, .. } => fmt
-                .debug_struct("Plan")
-                .field("output", &"dyn Future")
-                .field("child", child)
-                .field("stdout", stdout)
-                .finish(),
-            ChildState::Build {
-                child,
-                stdout,
-                completed,
-                total,
-            } => fmt
-                .debug_struct("Build")
-                .field("child", child)
-                .field("stdout", stdout)
-                .field("completed", completed)
-                .field("total", total)
-                .finish(),
-            ChildState::Error => fmt.debug_struct("Error").finish(),
-            ChildState::Done => fmt.debug_struct("Done").finish(),
-        }
-    }
-}
-
+/// Parse bytes containing JSON of a cargo build plan.
 fn parse_total(bytes: &[u8]) -> io::Result<usize> {
     let build_plan: BuildPlan = serde_json::from_slice(bytes).map_err(error::invalid_plan)?;
 
     Ok(build_plan.invocations.len())
 }
 
+/// Parse bytes containing JSON of a cargo build message.
 fn parse_message(bytes: &[u8]) -> io::Result<Message> {
     let message = Message::parse_stream(Cursor::new(bytes))
         .next()

@@ -1,159 +1,202 @@
 use {
-    camino::Utf8Path,
-    mocha_ident::spec::{ArtifactIdent, FeatureIdent, PackageIdent, RepositoryIdent, SourceIdent},
-    petgraph::Graph,
+    crate::{milk, Milk},
+    itertools::Itertools,
+    mocha_fs::{Utf8Path, Utf8PathBuf},
+    mocha_ident::{Artifact, CargoFeature, PackageIdent, RepositoryIdent, Source},
     serde::{Deserialize, Serialize},
     std::{
-        collections::{BTreeSet, HashMap},
-        fmt, io,
+        collections::{BTreeSet, HashMap, HashSet},
+        error, fmt, io,
     },
 };
 
+/// Package index.
+pub struct Index {
+    // Map of all installed packages.
+    pub(crate) map: HashMap<PackageIdent, Entry>,
+}
+
+/// A package.
+pub struct Package {
+    ident: PackageIdent,
+    entry: Entry,
+}
+
+#[derive(Debug)]
+pub(crate) struct Entry {
+    /// Whether this package is installed.
+    installed: bool,
+    /// Image path.
+    image_path: Utf8PathBuf,
+    /// System path.
+    system_dir: Utf8PathBuf,
+    /// Origin repository.
+    repository: RepositoryIdent,
+    /// Serialized package information.
+    serialized: Serialized,
+}
+
+/// Serialized package information.
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Serialized {
-    pub sources: BTreeSet<SourceIdent>,
-    pub parts: Vec<Part>,
+struct Serialized {
+    sources: BTreeSet<Source>,
+    parts: Vec<Part>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case", untagged)]
-pub enum Part {
+// TODO: Use faster collections than BTreeSet's, and stricter validation.
+/// A part to assemble a package.
+enum Part {
     Rust {
         #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
-        features: BTreeSet<FeatureIdent>,
+        features: BTreeSet<CargoFeature>,
         #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
         depends: BTreeSet<PackageIdent>,
-        artifacts: BTreeSet<ArtifactIdent>,
+        artifacts: BTreeSet<Artifact>,
     },
     CCpp {
         #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
         depends: BTreeSet<PackageIdent>,
-        artifacts: BTreeSet<ArtifactIdent>,
+        artifacts: BTreeSet<Artifact>,
     },
     Copy {
         #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
         depends: BTreeSet<PackageIdent>,
-        artifacts: BTreeSet<ArtifactIdent>,
+        artifacts: BTreeSet<Artifact>,
     },
     Zig {
         #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
         depends: BTreeSet<PackageIdent>,
-        artifacts: BTreeSet<ArtifactIdent>,
+        artifacts: BTreeSet<Artifact>,
     },
 }
 
-#[derive(Debug)]
-pub struct Entry {
-    pub installed: bool,
-    pub repository: RepositoryIdent,
-    pub serialized: Serialized,
-}
-
-pub struct Index {
-    pub graph: Graph<PackageIdent, Box<str>>,
-    pub index: HashMap<PackageIdent, Entry>,
-}
-
 impl Index {
-    pub fn open() -> io::Result<Self> {
-        let mut graph = Graph::new();
-        let mut index = HashMap::new();
-        let mut mochas: HashMap<PackageIdent, ()> = HashMap::new();
-
-        for entry in read_dir("/mocha/images", 1) {
-            let Some(path) = path_utf8(&entry) else {
-                continue;
-            };
-
-            let Some((name, "mocha")) = file_stem_extension(path) else {
-                continue;
-            };
-
-            let Some((name, _hash)) = name.split_once('-') else {
-                continue;
-            };
-
-            let name = name.parse().unwrap();
-
-            mochas.insert(name, ());
-        }
-
-        for entry in read_dir("/mocha/repositories", 2) {
-            let Some(path) = path_utf8(&entry) else {
-                continue;
-            };
-
-            let Some((name, "spec")) = file_stem_extension(path) else {
-                continue;
-            };
-
-            let name = name.parse().unwrap();
-
-            // SAFETY: minimum depth enforces a parent to exist.
-            let repository = unsafe {
-                path.parent()
-                    .unwrap_unchecked()
-                    .file_name()
-                    .unwrap_unchecked()
-            };
-
-            let Ok(content) = std::fs::read_to_string(path) else {
-                continue;
-            };
-
-            let serialized = match serde_yaml::from_str(&content) {
-                Ok(serialized) => serialized,
-                Err(error) => {
-                    eprintln!("{name}: {error:?}");
-
-                    continue;
-                }
-            };
-
-            graph.add_node(name);
-
-            index.insert(
-                name,
-                Entry {
-                    installed: mochas.contains_key(&name),
-                    repository: repository.parse().unwrap(),
-                    serialized,
-                },
-            );
-        }
-
-        Ok(Self { graph, index })
-    }
-
+    /// Returns the count of packages within the index.
     #[inline]
     pub fn len(&self) -> usize {
-        self.index.len()
+        self.map.len()
+    }
+
+    /// If there are no packages.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
+
+    /// Resolve packages from the provided iterator.
+    ///
+    /// This consumes the index to free memory consumed by unused packages.
+    pub fn resolve<I>(mut self, packages: I) -> Result<Vec<Package>, Vec<PackageIdent>>
+    where
+        I: IntoIterator<Item = PackageIdent>,
+    {
+        let (packages, unknown_packages): (Vec<_>, Vec<_>) = packages
+            .into_iter()
+            .map(|ident| self.map.remove_entry(&ident).ok_or(ident))
+            .partition_result();
+
+        if unknown_packages.is_empty() {
+            // Convert `Vec<(PackageIdent, Entry)>` to `Vec<Package>`.
+            // AFAIK, LLVM should optimize this out completely, as the representation is the same.
+            let packages = packages
+                .into_iter()
+                .map(|(ident, entry)| Package { ident, entry })
+                .collect::<Vec<_>>();
+
+            Ok(packages)
+        } else {
+            Err(unknown_packages)
+        }
+    }
+}
+
+impl Package {
+    /// This package's identifier.
+    #[inline]
+    pub fn ident(&self) -> PackageIdent {
+        self.ident
+    }
+
+    /// Is this package installed.
+    #[inline]
+    pub fn is_installed(&self) -> bool {
+        self.entry.installed
+    }
+
+    /// The image path.
+    #[inline]
+    pub fn image_path(&self) -> &Utf8Path {
+        &self.entry.image_path
+    }
+
+    /// The system path.
+    #[inline]
+    pub fn system_dir(&self) -> &Utf8Path {
+        &self.entry.system_dir
+    }
+
+    /// Attempt to uninstall this package.
+    pub fn uninstall(&self) -> io::Result<()> {
+        if !self.is_installed() {
+            return Ok(());
+        }
+
+        mocha_fs::remove_mount(self.system_dir())?;
+        mocha_fs::remove_dir(self.system_dir())?;
+        mocha_fs::remove_file(self.image_path())?;
+
+        Ok(())
     }
 }
 
 impl fmt::Debug for Index {
     #[inline]
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.index, fmt)
+        fmt::Debug::fmt(&self.map.keys(), fmt)
     }
 }
 
-fn read_dir(dir: &str, depth: usize) -> impl Iterator<Item = walkdir::DirEntry> {
-    walkdir::WalkDir::new(dir)
-        .max_depth(depth)
-        .min_depth(depth)
-        .same_file_system(true)
-        .into_iter()
-        .flatten()
-        .filter(|entry| entry.file_type().is_file())
+/// Load a package entry.
+pub(crate) fn entry(
+    milk: &Milk,
+    installed: &HashSet<PackageIdent>,
+    entry: mocha_fs::FileEntry,
+) -> io::Result<(PackageIdent, Entry)> {
+    let (ident, extension) =
+        milk::parts_of(&entry).ok_or_else(|| invalid_data("missing file stem and extension"))?;
+
+    if extension != "spec" {
+        return Err(invalid_data("not a spec"));
+    }
+
+    let ident = ident.parse()?;
+    let repository = entry.parent().file_name().unwrap().parse()?;
+    let specification = mocha_fs::open_buffered(entry.path())?;
+    let serialized = serde_yaml::from_reader(specification).map_err(|error| {
+        eprintln!("{ident}: {error}");
+
+        io::Error::new(io::ErrorKind::InvalidData, error)
+    })?;
+
+    let image_path = milk.images_dir().join(ident).with_extension("mocha");
+    let system_dir = milk.system_dir().join(ident);
+    let entry = Entry {
+        installed: installed.contains(&ident),
+        image_path,
+        system_dir,
+        repository,
+        serialized,
+    };
+
+    Ok((ident, entry))
 }
 
-fn path_utf8(entry: &walkdir::DirEntry) -> Option<&Utf8Path> {
-    Utf8Path::from_path(entry.path())
-}
-
-fn file_stem_extension(path: &Utf8Path) -> Option<(&str, &str)> {
-    let file_name = path.file_name()?;
-
-    file_name.rsplit_once('.')
+#[inline]
+fn invalid_data<E>(error: E) -> io::Error
+where
+    E: Into<Box<dyn error::Error + Send + Sync>>,
+{
+    io::Error::new(io::ErrorKind::InvalidData, error)
 }
