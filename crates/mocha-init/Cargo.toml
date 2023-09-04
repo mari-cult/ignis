@@ -1,0 +1,16 @@
+[package]
+name = "mocha-init"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+codespan-reporting = { version = "0.11.1", default-features = false, features = ["ascii-only"] }
+futures-util = { version = "0.3.28", default-features = false }
+indexmap = { version = "2.0.0", default-features = false, features = ["serde"] }
+ipnetwork = { version = "0.20.0", default-features = false, features = ["serde"] }
+mocha-os = { version = "0.0.0", path = "../mocha-os", default-features = false }
+rtnetlink = { version = "0.13.1", default-features = false, features = ["tokio_socket"] }
+serde = { version = "1.0.188", default-features = false, features = ["derive", "std"] }
+thiserror = { version = "1.0.47", default-features = false }
+tokio = { version = "1.32.0", default-features = false, features = ["macros", "net", "process", "rt", "signal", "time"] }
+toml = { version = "0.7.6", default-features = false, features = ["display", "parse"] }

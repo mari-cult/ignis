@@ -1,0 +1,10 @@
+[package]
+name = "mocha-os"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+bitflags = { version = "2.4.0", default-features = false }
+memoffset = { version = "0.9.0", default-features = false }
+nix = { version = "0.27.1", default-features = false, features = ["kmod", "reboot"] }
+rustix = { version = "0.38.11", default-features = false, features = ["fs", "mount", "process", "std", "thread"] }
