@@ -8,3 +8,6 @@ bitflags = { version = "2.4.0", default-features = false, features = ["bytemuck"
 bytemuck = { version = "1.14.0", default-features = false, features = ["derive"] }
 nix = { version = "0.27.1", default-features = false, features = ["kmod", "reboot"] }
 rustix = { version = "0.38.11", default-features = false, features = ["fs", "mount", "process", "std", "thread"] }
+
+[dev-dependencies]
+clap = { version = "4.4.2", default-features = false, features = ["color", "derive", "env", "error-context", "help", "std", "suggestions", "unicode", "usage", "wrap_help"] }
