@@ -19,14 +19,20 @@ pub struct Process {
 impl Process {
     #[inline]
     #[must_use]
-    pub const fn new(process_id: u32, position: usize) -> Self {
+    pub fn new(process_id: u32, position: usize) -> Self {
         Self {
             process_id,
             position,
         }
     }
+}
 
-    fn remote_read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+impl Read for Process {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.read_vectored(slice::from_mut(&mut IoSliceMut::new(buf)))
+    }
+
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let len = bufs.iter().map(|buf| buf.len()).sum();
         let amount = uio::process_vm_readv(
             Pid::from_raw(self.process_id as libc::pid_t),
@@ -40,32 +46,6 @@ impl Process {
         self.position += amount;
 
         Ok(amount)
-    }
-
-    fn remote_write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let len = bufs.iter().map(|buf| buf.len()).sum();
-        let amount = uio::process_vm_writev(
-            Pid::from_raw(self.process_id as libc::pid_t),
-            bufs,
-            slice::from_ref(&RemoteIoVec {
-                base: self.position,
-                len,
-            }),
-        )?;
-
-        self.position += amount;
-
-        Ok(amount)
-    }
-}
-
-impl Read for Process {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.read_vectored(slice::from_mut(&mut IoSliceMut::new(buf)))
-    }
-
-    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        self.remote_read_vectored(bufs)
     }
 }
 
@@ -95,7 +75,19 @@ impl Write for Process {
     }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        self.remote_write_vectored(bufs)
+        let len = bufs.iter().map(|buf| buf.len()).sum();
+        let amount = uio::process_vm_writev(
+            Pid::from_raw(self.process_id as libc::pid_t),
+            bufs,
+            slice::from_ref(&RemoteIoVec {
+                base: self.position,
+                len,
+            }),
+        )?;
+
+        self.position += amount;
+
+        Ok(amount)
     }
 
     fn flush(&mut self) -> io::Result<()> {
