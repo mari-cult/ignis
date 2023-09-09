@@ -1,4 +1,11 @@
 //! Interact with EFI variables.
+//!
+//! # References
+//!
+//! - [systemd](https://systemd.io/BOOT_LOADER_INTERFACE/)
+//! - [UEFI 2.3.1](https://uefi.org/sites/default/files/resources/UEFI_2_3_1_C.pdf)
+//! - [`MdePkg/Include/Uefi/UefiSpec.h#L1778`](https://github.com/tianocore/edk2/blob/master/MdePkg/Include/Uefi/UefiSpec.h#L1778)
+//! - [`include/linux/efi.h#L922`](https://github.com/torvalds/linux/blob/master/include/linux/efi.h#L922)
 
 use {
     bytemuck::{NoUninit, Pod, Zeroable},
@@ -11,10 +18,6 @@ use {
 
 bitflags::bitflags! {
     /// EFI variable attributes.
-    ///
-    /// # References
-    ///
-    ///  - [Linux](https://github.com/torvalds/linux/blob/master/include/linux/efi.h#L922)
     #[derive(Clone, Copy, Debug, Eq, Pod, PartialEq, Zeroable)]
     #[repr(transparent)]
     pub struct Attribute: u32 {
@@ -30,11 +33,6 @@ bitflags::bitflags! {
 
 bitflags::bitflags! {
     /// OS indications.
-    ///
-    /// # References
-    ///
-    /// - [UEFI 2.3.1](https://uefi.org/sites/default/files/resources/UEFI_2_3_1_C.pdf)
-    /// - [EDK2](https://github.com/tianocore/edk2/blob/master/MdePkg/Include/Uefi/UefiSpec.h#L1778)
     #[derive(Clone, Copy, Debug, Eq, Pod, PartialEq, Zeroable)]
     #[repr(transparent)]
     pub struct Indication: u64 {
@@ -70,7 +68,6 @@ pub fn set_boot_to_firmware(enabled: bool) -> io::Result<()> {
         "/sys/firmware/efi/efivars/OsIndications-8be4df61-93ca-11d2-aa0d-00e098032b8c";
 
     if enabled {
-        let mut variable = File::create(OS_INDICATIONS)?;
         let os_indications = OsIndications {
             attributes: Attribute::NON_VOLATILE
                 | Attribute::BOOT_SERVICE_ACCESS
@@ -78,7 +75,10 @@ pub fn set_boot_to_firmware(enabled: bool) -> io::Result<()> {
             indications: Indication::BOOT_TO_FW_UI,
         };
 
-        variable.write(bytemuck::bytes_of(&os_indications))?;
+        let mut variable = File::create(OS_INDICATIONS)?;
+
+        // Write only once, as that is what the kernel expects.
+        let _amount = variable.write(bytemuck::bytes_of(&os_indications))?;
 
         Ok(())
     } else {

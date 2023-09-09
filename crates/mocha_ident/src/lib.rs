@@ -84,8 +84,7 @@ where
     let unexpected_character = input
         .chars()
         .enumerate()
-        .filter(|(_position, character)| !(is_valid)(*character))
-        .next();
+        .find(|(_position, character)| !(is_valid)(*character));
 
     match unexpected_character {
         Some((position, character)) => Err(IdentError::UnexpectedCharacter {

@@ -57,7 +57,7 @@ async fn run() {
 
             println!("To be installed: {list}");
 
-            for package in packages {
+            for _package in packages {
                 /*let result = add(&ident, entry).await;
 
                 match result {

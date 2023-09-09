@@ -63,8 +63,8 @@ impl Milk {
         let installed = mocha_fs::read_files_at(self.images_dir(), 1)
             .flatten()
             .flat_map(|entry| {
-                let (stem, extension) = parts_of(&entry)?;
-                let (ident, hash) = stem.rsplit_once('-')?;
+                let (stem, _extension) = parts_of(&entry)?;
+                let (ident, _hash) = stem.rsplit_once('-')?;
                 let ident = ident.parse().ok()?;
 
                 Some(ident)

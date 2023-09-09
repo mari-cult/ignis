@@ -532,6 +532,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4668fb0ea861c1df094127ac5f1da3409a82116a4ba74fca2e58ef927159bb3"
 
 [[package]]
+name = "linux"
+version = "0.0.0"
+dependencies = [
+ "bitflags 2.4.0",
+ "bytemuck",
+ "clap",
+ "libc",
+ "linux-syscall",
+ "memoffset",
+ "nix 0.27.1",
+ "rustix 0.38.11",
+]
+
+[[package]]
 name = "linux-raw-sys"
 version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -542,6 +556,15 @@ name = "linux-raw-sys"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57bcfdad1b858c2db7c38303a6d2ad4dfaf5eb53dfeb0910128b2c26d6158503"
+
+[[package]]
+name = "linux-syscall"
+version = "0.0.0"
+dependencies = [
+ "linux-raw-sys 0.4.5",
+ "nix 0.27.1",
+ "rustix 0.38.11",
+]
 
 [[package]]
 name = "lock_api"
@@ -656,17 +679,6 @@ dependencies = [
 [[package]]
 name = "mocha-settings"
 version = "0.1.0"
-
-[[package]]
-name = "mocha-std"
-version = "0.0.0"
-dependencies = [
- "bitflags 2.4.0",
- "bytemuck",
- "clap",
- "nix 0.27.1",
- "rustix 0.38.11",
-]
 
 [[package]]
 name = "mocha_cargo"
@@ -1271,9 +1283,9 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.7.6"
+version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c17e963a819c331dcacd7ab957d80bc2b9a9c1e71c804826d2f283dd65306542"
+checksum = "dd79e69d3b627db300ff956027cc6c3798cef26d22526befdfcd12feeb6d2257"
 dependencies = [
  "serde",
  "serde_spanned",
@@ -1292,9 +1304,9 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
-version = "0.19.14"
+version = "0.19.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8123f27e969974a3dfba720fdb560be359f57b44302d280ba72e76a74480e8a"
+checksum = "1b5bb770da30e5cbfde35a2d7b9b8a2c4b8ef89548a7a6aeab5c9a576e3e7421"
 dependencies = [
  "indexmap",
  "serde",
