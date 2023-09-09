@@ -1,3 +1,5 @@
+//! Process-related functionality.
+
 use {
     crate::syscall::Error,
     nix::{
@@ -11,14 +13,15 @@ use {
     },
 };
 
+/// A remote process I/O object.
 pub struct Process {
     process_id: u32,
     position: usize,
 }
 
 impl Process {
-    #[inline]
-    #[must_use]
+    /// Create a new `Process`, with the specified procesa ID, and
+    /// start at `position` in the process' memory.
     pub fn new(process_id: u32, position: usize) -> Self {
         Self {
             process_id,

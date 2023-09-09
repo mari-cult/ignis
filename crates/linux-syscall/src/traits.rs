@@ -1,4 +1,4 @@
-use crate::{unreachable, Error};
+use crate::{macros::unreachable, Error};
 
 /// A raw system call argument.
 pub trait Arg: sealed::Sealed {
@@ -8,13 +8,16 @@ pub trait Arg: sealed::Sealed {
 
 /// A trait for converting into a raw system call argument.
 pub trait IntoArg {
+    /// Raw system call argument.
     type Target: Arg;
 
+    /// Perform the conversion.
     fn into_arg(self) -> Self::Target;
 }
 
 /// A trait for decoding system call return values.
 pub trait FromOutput {
+    /// Perform the conversion.
     fn from_output<A: Arg>(ouput: A) -> Self;
 }
 

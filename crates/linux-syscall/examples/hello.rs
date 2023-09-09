@@ -1,3 +1,5 @@
+//! Simple `write(2)` hello world.
+
 use linux_syscall::{syscall, Error};
 
 fn main() {

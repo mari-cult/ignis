@@ -21,13 +21,20 @@ bitflags::bitflags! {
     #[derive(Clone, Copy, Debug, Eq, Pod, PartialEq, Zeroable)]
     #[repr(transparent)]
     pub struct Attribute: u32 {
-        const NON_VOLATILE = 0x0000000000000001;
-        const BOOT_SERVICE_ACCESS = 0x0000000000000002;
-        const RUNTIME_ACCESS = 0x0000000000000004;
-        const HARDWARE_ERROR_RECORD = 0x0000000000000008;
-        const AUTHENTICATED_WRITE_ACCESS = 0x0000000000000010;
-        const TIME_BASED_AUTHENTICATED_WRITE_ACCESS = 0x0000000000000020;
-        const APPEND_WRITE = 0x0000000000000040;
+        /// Permanently stored.
+        const NON_VOLATILE = 1 << 0;
+        /// Boot services can access it.
+        const BOOT_SERVICE_ACCESS = 1 << 1;
+        /// Runtime can access it.
+        const RUNTIME_ACCESS = 1 << 2;
+        /// Hardware errors are recorded.
+        const HARDWARE_ERROR_RECORD = 1 << 3;
+        /// Requires authentication to write.
+        const AUTHENTICATED_WRITE_ACCESS = 1 << 4;
+        /// Time-based authentication to write.
+        const TIME_BASED_AUTHENTICATED_WRITE_ACCESS = 1 << 5;
+        /// Appends rather than truncating on write.
+        const APPEND_WRITE = 1 << 6;
     }
 }
 
@@ -36,12 +43,19 @@ bitflags::bitflags! {
     #[derive(Clone, Copy, Debug, Eq, Pod, PartialEq, Zeroable)]
     #[repr(transparent)]
     pub struct Indication: u64 {
+        /// Boot to firmware UI.
         const BOOT_TO_FW_UI = 0x0000000000000001;
+        #[allow(missing_docs)]
         const TIMESTAMP_REVOCATION = 0x0000000000000002;
+        #[allow(missing_docs)]
         const FILE_CAPSULE_DELIVERY_SUPPORTED = 0x0000000000000004;
+        #[allow(missing_docs)]
         const FMP_CAPSULE_SUPPORTED = 0x0000000000000008;
+        #[allow(missing_docs)]
         const CAPSULE_RESULT_VAR_SUPPORTED = 0x0000000000000010;
+        #[allow(missing_docs)]
         const START_PLATFORM_RECOVERY = 0x0000000000000040;
+        #[allow(missing_docs)]
         const JSON_CONFIG_DATA_REFRESH = 0x0000000000000080;
     }
 }

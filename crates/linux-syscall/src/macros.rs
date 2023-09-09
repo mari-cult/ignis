@@ -84,6 +84,35 @@ macro_rules! syscall {
     };
 }
 
+macro_rules! ids {
+    ($($variant:ident = $value:ident,)*) => {
+        /// System call ID.
+        #[allow(missing_docs)]
+        #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+        #[repr(u32)]
+        pub enum Id {
+            $($variant = linux_raw_sys::general::$value,)*
+        }
+
+        impl Id {
+            /// Obtain a system call ID from the raw representation.
+            pub const fn from_raw(id: u32) -> Option<Self> {
+                let id = match id {
+                    $(linux_raw_sys::general::$value => Self::$variant,)*
+                    _ => return None,
+                };
+
+                Some(id)
+            }
+
+            /// Convert to the raw representation.
+            pub const fn to_raw(self) -> u32 {
+                self as u32
+            }
+        }
+    };
+}
+
 macro_rules! unreachable {
     () => {{
         #[cfg(debug_assertions)]
@@ -96,4 +125,4 @@ macro_rules! unreachable {
     }};
 }
 
-pub(crate) use unreachable;
+pub(crate) use {ids, unreachable};

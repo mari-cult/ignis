@@ -1,8 +1,10 @@
-use linux_raw_sys::general::*;
+use crate::macros::ids;
 
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[repr(u32)]
-pub enum Id {
+ids! {
+    Exit = __NR_exit,
+    ExitGroup = __NR_exit_group,
+    GetGid = __NR_getgid,
+    GetUid = __NR_getuid,
     Read = __NR_read,
     Reboot = __NR_reboot,
     SecComp = __NR_seccomp,

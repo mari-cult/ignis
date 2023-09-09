@@ -1,5 +1,8 @@
 //! Linux system calls.
 
+#![deny(invalid_reference_casting)]
+#![deny(missing_docs)]
+#![deny(warnings)]
 #![cfg_attr(not(any(doc, feature = "std")), no_std)]
 
 pub use self::{
@@ -7,8 +10,6 @@ pub use self::{
     id::Id,
     traits::{Arg, FromOutput, IntoArg},
 };
-
-pub(crate) use macros::unreachable;
 
 mod error;
 mod id;
