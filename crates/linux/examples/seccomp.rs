@@ -1,14 +1,23 @@
 use {
     clap::Parser,
     linux::{
+        fd,
         seccomp::{
             bpf::{Action, Instruction, Program},
             Listener,
         },
         syscall::{Error, Id},
     },
-    rustix::thread::set_no_new_privs,
-    std::{ffi::OsString, io, process::Command, thread},
+    rustix::thread,
+    std::{
+        ffi::OsString,
+        io,
+        os::unix::{
+            io::{FromRawFd, IntoRawFd},
+            process::CommandExt,
+        },
+        process::Command,
+    },
 };
 
 const PROGRAM: &[Instruction] = &[
@@ -33,23 +42,30 @@ struct Args {
 fn main() -> io::Result<()> {
     let Args { command, args } = Args::parse();
 
-    set_no_new_privs(true)?;
+    thread::set_no_new_privs(true)?;
 
     let program = Program::new(PROGRAM);
 
     println!("BPF program to install: {program:?}");
 
-    let mut listener = Listener::install(&program)?;
-    let child = Command::new(command).args(args).spawn()?;
+    let mut command = Command::new(command);
+    let (sender, receiver) = fd::channel()?;
 
-    let handle = thread::spawn(move || {
-        let output = child.wait_with_output()?;
-        let stdout = String::from_utf8_lossy(&output.stdout);
+    command.args(args);
 
-        println!("stdout: {stdout}");
+    unsafe {
+        command.pre_exec(move || {
+            let listener = Listener::install(&program)?;
 
-        io::Result::Ok(())
-    });
+            sender.send(listener)?;
+
+            Ok(())
+        });
+    }
+
+    let mut child = command.spawn()?;
+    let fd = receiver.recv()?;
+    let mut listener = unsafe { Listener::from_raw_fd(fd.into_raw_fd()) };
 
     while let Ok(mut notification) = listener.recv() {
         let process_id = notification.process_id();
@@ -78,7 +94,7 @@ fn main() -> io::Result<()> {
         }
     }
 
-    let _result = handle.join();
+    child.wait()?;
 
     Ok(())
 }

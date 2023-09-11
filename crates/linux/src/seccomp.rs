@@ -7,7 +7,10 @@
 
 use {
     crate::syscall::{Error, Id},
-    std::{fmt, io, os::fd::OwnedFd},
+    std::{
+        fmt, io,
+        os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd},
+    },
 };
 
 pub mod bpf;
@@ -29,7 +32,11 @@ pub struct Listener {
 
 impl Listener {
     /// Install the specified BPF program, and return a listener.
-    pub fn install(program: &bpf::Program<'_>) -> io::Result<Listener> {
+    ///
+    /// # Safety
+    ///
+    /// SecComp filters modify the behaviour of the current program, care must be taken to ensure correct behaviour.
+    pub unsafe fn install(program: &bpf::Program<'_>) -> io::Result<Listener> {
         c::seccomp_new_listener(program).map(|fd| Listener { fd })
     }
 
@@ -41,6 +48,32 @@ impl Listener {
             listener: self,
             notification,
         })
+    }
+}
+
+impl AsFd for Listener {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.fd.as_fd()
+    }
+}
+
+impl AsRawFd for Listener {
+    fn as_raw_fd(&self) -> RawFd {
+        self.fd.as_raw_fd()
+    }
+}
+
+impl FromRawFd for Listener {
+    unsafe fn from_raw_fd(fd: RawFd) -> Self {
+        let fd = OwnedFd::from_raw_fd(fd);
+
+        Self { fd }
+    }
+}
+
+impl IntoRawFd for Listener {
+    fn into_raw_fd(self) -> RawFd {
+        self.fd.into_raw_fd()
     }
 }
 
@@ -85,7 +118,7 @@ impl<'listener> Notification<'listener> {
 
     /// Reply to the notification.
     fn send_response(&mut self, response: c::seccomp_notif_resp) -> io::Result<()> {
-        c::seccomp_ioctl_notif_send(&self.listener.fd, response)
+        c::seccomp_ioctl_notif_send(&self.listener, response)
     }
 }
 

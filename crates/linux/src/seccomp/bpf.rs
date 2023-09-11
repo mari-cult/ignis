@@ -159,6 +159,9 @@ impl<'bpf> Program<'bpf> {
     }
 }
 
+unsafe impl<'bpf> Send for Program<'bpf> {}
+unsafe impl<'bpf> Sync for Program<'bpf> {}
+
 impl fmt::Debug for Instruction {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_load_syscall_id() {

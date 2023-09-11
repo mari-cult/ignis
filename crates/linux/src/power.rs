@@ -6,7 +6,7 @@
 //! - [`arch/x86/kernel/reboot.c#L763`](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/reboot.c#L763)
 //! - [`include/uapi/linux/reboot.h`](https://github.com/torvalds/linux/blob/master/include/uapi/linux/reboot.h)
 
-use {crate::syscall::syscall, crate::util::cstr, core::ffi::CStr, std::io};
+use {crate::syscall::syscall, core::ffi::CStr, std::io};
 
 const MAGIC1: u32 = 0xfee1dead;
 const MAGIC2: u32 = 672274793;
@@ -50,8 +50,8 @@ impl Restart {
     #[allow(dead_code)]
     fn target(&self) -> Option<&'static CStr> {
         let string = match self {
-            Self::Download => cstr!("download"),
-            Self::Recovery => cstr!("recovery"),
+            Self::Download => c"download",
+            Self::Recovery => c"recovery",
             _ => return None,
         };
 
