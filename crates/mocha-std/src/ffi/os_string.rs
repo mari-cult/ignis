@@ -1,5 +1,5 @@
 use {
-    super::vec::ArrayVec,
+    crate::vec::ArrayVec,
     std::{
         borrow::{self, Cow},
         cmp,

@@ -1,5 +1,5 @@
 use {
-    super::os_string::ArrayOsString,
+    crate::ffi::ArrayOsString,
     std::{fmt, ops, path::Path},
 };
 

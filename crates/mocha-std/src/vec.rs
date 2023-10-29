@@ -1,4 +1,9 @@
-use std::{fmt, mem::MaybeUninit, ops, ptr, slice};
+use std::{
+    fmt,
+    mem::MaybeUninit,
+    ops, ptr,
+    slice::{self, SliceIndex},
+};
 
 pub struct ArrayVec<T, const CAPACITY: usize> {
     buf: [MaybeUninit<T>; CAPACITY],
@@ -89,24 +94,28 @@ impl<T, const CAPACITY: usize> ArrayVec<T, CAPACITY> {
 }
 
 impl<T, const CAPACITY: usize> AsRef<ArrayVec<T, CAPACITY>> for ArrayVec<T, CAPACITY> {
+    #[inline]
     fn as_ref(&self) -> &ArrayVec<T, CAPACITY> {
         self
     }
 }
 
 impl<T, const CAPACITY: usize> AsMut<ArrayVec<T, CAPACITY>> for ArrayVec<T, CAPACITY> {
+    #[inline]
     fn as_mut(&mut self) -> &mut ArrayVec<T, CAPACITY> {
         self
     }
 }
 
 impl<T, const CAPACITY: usize> AsRef<[T]> for ArrayVec<T, CAPACITY> {
+    #[inline]
     fn as_ref(&self) -> &[T] {
         self
     }
 }
 
 impl<T, const CAPACITY: usize> AsMut<[T]> for ArrayVec<T, CAPACITY> {
+    #[inline]
     fn as_mut(&mut self) -> &mut [T] {
         self
     }
@@ -118,20 +127,44 @@ where
 {
     #[inline]
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(self.as_slice(), fmt)
+        fmt::Debug::fmt(&**self, fmt)
     }
 }
 
 impl<T, const CAPACITY: usize> ops::Deref for ArrayVec<T, CAPACITY> {
     type Target = [T];
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         unsafe { slice::from_raw_parts(self.as_ptr(), self.init) }
     }
 }
 
 impl<T, const CAPACITY: usize> ops::DerefMut for ArrayVec<T, CAPACITY> {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.init) }
+    }
+}
+
+impl<T, I, const CAPACITY: usize> ops::Index<I> for ArrayVec<T, CAPACITY>
+where
+    I: SliceIndex<[T]>,
+{
+    type Output = <I as SliceIndex<[T]>>::Output;
+
+    #[inline]
+    fn index(&self, index: I) -> &Self::Output {
+        ops::Index::index(&**self, index)
+    }
+}
+
+impl<T, I, const CAPACITY: usize> ops::IndexMut<I> for ArrayVec<T, CAPACITY>
+where
+    I: SliceIndex<[T]>,
+{
+    #[inline]
+    fn index_mut(&mut self, index: I) -> &mut Self::Output {
+        ops::IndexMut::index_mut(&mut **self, index)
     }
 }
