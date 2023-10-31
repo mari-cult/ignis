@@ -1,0 +1,8 @@
+[package]
+name = "rune-content"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+image = { version = "0.24.7", default-features = false, features = ["avif", "bmp", "dds", "dxt", "exr", "farbfeld", "gif", "hdr", "ico", "jpeg", "mp4parse", "openexr", "png", "pnm", "qoi", "tga", "tiff", "webp"] }
+infer = { version = "0.15.0", default-features = false }

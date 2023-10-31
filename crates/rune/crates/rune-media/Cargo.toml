@@ -1,0 +1,12 @@
+[package]
+name = "rune-media"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+ffmpeg-next = { version = "6.0.0", default-features = false, features = ["codec", "device", "filter", "format", "software-resampling", "software-scaling"] }
+icy_sixel = { version = "0.1.1", default-features = false }
+image = { version = "0.24.7", default-features = false, features = ["avif", "bmp", "dds", "dxt", "exr", "farbfeld", "gif", "hdr", "ico", "jpeg", "mp4parse", "openexr", "png", "pnm", "qoi", "tga", "tiff", "webp"] }
+memmap2 = { version = "0.9.0", default-features = false }
+rune-content = { version = "0.0.0", path = "../rune-content", default-features = false }
+thiserror = { version = "1.0.49", default-features = false }
