@@ -67,7 +67,7 @@ impl Init {
 
         mount::setup_standard()?;
 
-        let settings = Settings::open("/settings.toml").unwrap();
+        let settings = Settings::open("/system/settings.toml").unwrap();
         let console = Arc::new(VirtualConsole::open(NonZeroU8::new(1).unwrap())?);
         let signals = Signals::new()?;
         let listener = bind_unix_listener("/tmp/init.sock")?;
