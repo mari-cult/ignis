@@ -1,13 +1,12 @@
 [package]
 name = "sixel"
-version = "0.1.0"
+version = "0.0.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 bitvec = { version = "1.0.1", default-features = false, features = ["std"] }
 color_quant = { version = "1.1.0", default-features = false }
-icy_sixel = { version = "0.1.1", default-features = false }
+crossterm = { version = "0.27.0", default-features = false, features = ["bracketed-paste", "event-stream", "use-dev-tty"] }
 image = { version = "0.24.7", default-features = false, features = ["gif", "png", "jpeg", "webp"] }
 itertools = { version = "0.11.0", default-features = false, features = ["use_std"] }
+ratatui = { version = "0.24.0", default-features = false, features = ["crossterm", "underline-color"] }

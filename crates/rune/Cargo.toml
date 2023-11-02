@@ -11,5 +11,3 @@ eframe = { version = "0.23.0", default-features = false, features = ["default_fo
 default = ["backend-egui"]
 backend-egui = ["dep:eframe"]
 
-[workspace]
-members = ["crates/*"]
