@@ -1,276 +1,198 @@
+use image::{DynamicImage, RgbaImage};
+
 use {
-    bitvec::{field::BitField, slice::BitSlice, vec::BitVec},
+    self::internal::InternalEncoder,
+    bitvec::vec::BitVec,
+    image::{buffer::Pixels, imageops, Rgba},
     itertools::Itertools,
+    ratatui::{
+        backend::{Backend, CrosstermBackend},
+        layout::{Constraint, Direction, Layout, Rect},
+    },
     std::{
-        collections::{hash_map::Entry, HashMap},
+        array,
         io::{self, BufWriter, Write},
-        slice,
+        mem,
+        ops::Range,
+        path::Path,
     },
 };
 
-use image::{imageops, DynamicImage, ImageBuffer, ImageEncoder, RgbaImage};
+mod internal;
 
-pub use self::pixel::ScaledRgb;
+type RgbaImageSlice<'a> = image::ImageBuffer<Rgba<u8>, &'a [u8]>;
 
-mod pixel;
+#[derive(Clone, Debug)]
+struct TransposeRgba<'a> {
+    pixels: Pixels<'a, Rgba<u8>>,
+    columns: Range<usize>,
+    rows: Range<usize>,
+}
+
+impl<'a> TransposeRgba<'a> {
+    pub fn new(pixels: Pixels<'a, Rgba<u8>>, columns: usize, rows: usize) -> Self {
+        Self {
+            pixels,
+            columns: 0..columns,
+            rows: 0..rows,
+        }
+    }
+}
+
+impl<'a> Iterator for TransposeRgba<'a> {
+    type Item = [u8; 4];
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let Some(column) = self.columns.next() else {
+            self.rows.next()?;
+            self.columns.start = 0;
+
+            return self.next();
+        };
+
+        let index = self.rows.start + column * self.columns.end;
+        let pixel = self.pixels.clone().nth(index)?.0;
+
+        Some(pixel)
+    }
+}
 
 pub struct SixelEncoder<W: Write> {
-    writer: W,
-    color_map: HashMap<ScaledRgb, usize>,
+    encoder: InternalEncoder<W>,
 }
 
 impl<W: Write> SixelEncoder<W> {
     pub fn new(writer: W) -> Self {
         Self {
-            writer,
-            color_map: HashMap::new(),
+            encoder: InternalEncoder::new(writer),
         }
-    }
-
-    /// Encode the sixel header.
-    fn encode_header(&mut self, width: u16, height: u16) -> io::Result<()> {
-        write!(self.writer, "\x1bPq\"1;1;{width};{height}")
-    }
-
-    /// Encode the sixel footer.
-    fn encode_footer(&mut self) -> io::Result<()> {
-        self.writer.write_all(b"\x1b\\")
-    }
-
-    /// Encode a scaled RGB pixel and register it in the internal color map.
-    fn encode_color(&mut self, pixel: ScaledRgb) -> io::Result<usize> {
-        let index = self.color_map.len();
-
-        match self.color_map.entry(pixel) {
-            Entry::Occupied(occupied) => Ok(*occupied.get()),
-            Entry::Vacant(entry) => {
-                entry.insert(index);
-
-                let ScaledRgb([r, g, b]) = pixel;
-
-                write!(self.writer, "#{index};2;{r};{g};{b}\n")?;
-
-                Ok(index)
-            }
-        }
-    }
-
-    /// Encode a 6-bit pixel and perhaps a repeat sequence.
-    fn encode_pixel(&mut self, pixel: u8, repeat: u16) -> io::Result<()> {
-        assert!(pixel < 64, "not a 6-bit pixel");
-
-        if repeat > 1 {
-            write!(self.writer, "!{repeat}")?;
-        }
-
-        let byte = pixel + 63;
-
-        self.writer.write_all(slice::from_ref(&byte))
-    }
-
-    /// Encode a row of pixels specified by `render` using the color from `index`.
-    ///
-    /// Repeating pixels are automatically folded into a repeat sequence.
-    fn encode_row(&mut self, index: usize, render: &BitSlice) -> io::Result<()> {
-        write!(self.writer, "#{index}")?;
-
-        for (count, pixel) in render
-            .chunks_exact(6)
-            .map(|pixel| pixel.load::<u8>())
-            .dedup_with_count()
-        {
-            self.encode_pixel(pixel, count as u16)?;
-        }
-
-        Ok(())
-    }
-
-    fn encode_palette(&mut self, image: &RgbaImage) -> io::Result<Vec<usize>> {
-        let area = (image.width() * image.height()) as usize;
-        let mut indices = Vec::with_capacity(area);
-
-        for pixel in image.pixels().copied() {
-            indices.push(self.encode_color(ScaledRgb::from_rgba(pixel))?);
-        }
-
-        assert_eq!(indices.len(), area, "pixel count mismatch");
-
-        Ok(indices)
-    }
-
-    fn encode_indices(&mut self, indices: Vec<usize>, width: usize) -> io::Result<()> {
-        let mut bits = BitVec::with_capacity(width);
-        let mut six_row_iter = indices.chunks_exact_mut(width * 6).peekable();
-
-        while let Some(six_rows) = six_row_iter.next() {
-            transpose(&mut six_rows, width, 6);
-
-            while let Some(index) = index_iter.next() {
-                bits.extend(row.iter().copied().map(|i| i == index));
-                assert!(bits.len() == width);
-                self.encode_row(index, &bits)?;
-                bits.clear();
-
-                if index_iter.peek().is_some() {
-                    self.writer.write_all(b"$")?;
-                }
-            }
-
-            if row_iter.peek().is_some() {
-                self.writer.write_all(b"-")?;
-            }
-        }
-
-        Ok(())
     }
 
     pub fn into_inner(self) -> W {
-        self.writer
+        self.encoder.into_inner()
     }
 }
 
-pub fn calculate_render_mask(colors: &[usize], target: usize, bits: &mut BitVec) {
-    // Ideally this would explicitly use SIMD as follows:
-    //
-    // ```
-    // vector.simd_eq(Simd::splat(target)).to_bitmask()
-    // ```
-    //
-    // Until portable_simd is stablized, we shall use this:
-    bits.extend(colors.iter().copied().map(|color| color == target));
-}
-
-fn transpose(matrix: &mut [usize], rows: usize, cols: usize) {
-    for i in 0..rows {
-        for j in (i + 1)..cols {
-            matrix.swap(i * cols + j, j * rows + i);
+impl<W: Write> image::ImageEncoder for SixelEncoder<W> {
+    fn write_image(
+        mut self,
+        bytes: &[u8],
+        width: u32,
+        height: u32,
+        color_type: image::ColorType,
+    ) -> image::ImageResult<()> {
+        if color_type != image::ColorType::Rgba8 {
+            todo!();
         }
-    }
-}
 
-fn main() -> io::Result<()> {
-    std::panic::set_hook(Box::new(|info| {
-        let _resuilt = crossterm::terminal::disable_raw_mode();
+        let width: u16 = width.try_into().map_err(|_error| todo!()).unwrap();
+        let height: u16 = height.try_into().map_err(|_error| todo!()).unwrap();
 
-        eprintln!("{info}");
-    }));
+        let image = RgbaImageSlice::from_raw(width as u32, height as u32, bytes).unwrap();
+        let color_map = color_quant::NeuQuant::new(10, 256, image.as_raw());
 
-    let mut terminal = ratatui::Terminal::new(ratatui::backend::CrosstermBackend::new(
-        BufWriter::new(io::stdout()),
-    ))?;
+        self.encoder.write_enter_sixel_mode(width, height)?;
 
-    crossterm::terminal::enable_raw_mode()?;
+        for (index, [red, green, blue, alpha]) in color_map
+            .color_map_rgba()
+            .chunks_exact(4)
+            .map(|rgba| <[u8; 4]>::try_from(rgba).unwrap())
+            .enumerate()
+        {
+            if alpha < 127 {
+                continue;
+            }
 
-    crossterm::execute!(
-        terminal.backend_mut(),
-        crossterm::terminal::Clear(crossterm::terminal::ClearType::All)
-    )?;
+            fn scale(channel: u8) -> u8 {
+                ((channel as u16 * 255) / 100) as u8
+            }
 
-    let size = terminal.backend_mut().window_size()?;
+            let rgb = [scale(red), scale(green), scale(blue)];
 
-    let cell_width = size.pixels.width / size.columns_rows.width;
-    let cell_height = size.pixels.height / size.columns_rows.height;
+            self.encoder.write_set_color_register(index as u16, rgb)?;
+        }
 
-    let layout = Layout::new()
-        .constraints([Constraint::Length(29), Constraint::Min(1)])
-        .direction(ratatui::prelude::Direction::Horizontal)
-        .split(Rect::new(
-            0,
-            0,
-            size.columns_rows.width,
-            size.columns_rows.height,
-        ));
+        let width = width as usize;
+        let width_by_six = width * 6;
+        let width_by_six_in_bytes = width_by_six * mem::size_of::<Rgba<u8>>();
 
-    //println!("{size:#?}");
+        let mut render_bits = BitVec::with_capacity(width_by_six);
+        let mut six_rows_iter = image
+            .as_raw()
+            .chunks_exact(width_by_six_in_bytes)
+            .map(|six_rows| RgbaImageSlice::from_raw(width as u32, 6, six_rows).unwrap())
+            .peekable();
 
-    let mut image = image::io::Reader::open("sample.png")
-        .unwrap()
-        .with_guessed_format()
-        .unwrap()
-        .decode()
-        .unwrap();
+        while let Some(six_rows) = six_rows_iter.next() {
+            let transposed = TransposeRgba::new(six_rows.pixels(), 6, width);
+            let mut unique_rgba_iter = transposed.clone().unique().peekable();
 
-    /* println!("original: {:#?}", image.dimensions());
+            while let Some(unique_rgba) = unique_rgba_iter.next() {
+                let index = color_map.index_of(&unique_rgba) as u16;
+                let bits = transposed
+                    .clone()
+                    .map(|rgba| rgba[3] >= 127 && rgba == unique_rgba);
 
-    let mut image = DynamicImage::from(image)
-        .resize(512, 512, imageops::Triangle)
-        .into_rgba8();
+                render_bits.clear();
+                render_bits.extend(bits);
+                self.encoder.write_render_pixels(index, &render_bits)?;
 
-    println!("scaled: {:#?}", image.dimensions());*/
+                if unique_rgba_iter.peek().is_some() {
+                    self.encoder.write_move_to_start_of_line()?;
+                }
+            }
 
-    let mut image = DynamicImage::from(image)
-        .resize_exact(512 * 6, 384 / 6, imageops::Triangle)
-        .into_rgba8();
-
-    //println!("unfucked: {:#?}", image.dimensions());
-
-    let color_map = color_quant::NeuQuant::new(10, 256, image.as_raw());
-    let mut encoder = SixelEncoder::new(io::Cursor::new(Vec::new()));
-
-    image::imageops::dither(&mut image, &color_map);
-
-    //println!("dithered: {:#?}", image.dimensions());
-
-    let width = image.width() as u16;
-    let height = image.height() as u16;
-
-    encoder.encode_header(width, height)?;
-
-    let color_indices = encoder.encode_palette(&image)?;
-
-    encoder.encode_indices(color_indices, width as usize)?;
-    encoder.encode_footer()?;
-
-    let string = unsafe { String::from_utf8_unchecked(encoder.into_inner().into_inner()) };
-
-    let mut image_state = ImageState { encoded: string };
-
-    terminal.draw(|frame| {
-        let image = Image {};
-        let text = Paragraph::new(vec![
-            Line::from("Such epic! Wow!"),
-            Line::from(format!("cell_width: {cell_width}")),
-            Line::from(format!("cell_height: {cell_height}")),
-            Line::from(format!("image_width: {width}")),
-            Line::from(format!("image_height: {height}")),
-        ]);
-
-        frame.render_stateful_widget(image, layout[0], &mut image_state);
-        frame.render_widget(text, layout[1]);
-    })?;
-
-    crossterm::terminal::disable_raw_mode()?;
-
-    Ok(())
-}
-
-use ratatui::{
-    buffer::{Buffer, Cell},
-    layout::{Constraint, Layout, Rect},
-    prelude::Backend,
-    text::{Line, Span},
-    widgets::{Paragraph, StatefulWidget},
-};
-
-pub struct Image {}
-
-pub struct ImageState {
-    encoded: String,
-}
-
-impl StatefulWidget for Image {
-    type State = ImageState;
-
-    fn render(self, area: Rect, buffer: &mut Buffer, state: &mut Self::State) {
-        for y in area.top()..area.bottom() {
-            for x in area.left()..area.right() {
-                buffer.get_mut(x, y).set_skip(true);
+            if six_rows_iter.peek().is_some() {
+                self.encoder.write_move_to_next_line()?;
             }
         }
 
-        buffer
-            .get_mut(area.left(), area.top())
-            .set_skip(false)
-            .set_symbol(&state.encoded);
+        self.encoder.write_exit_sixel_mode()?;
+
+        Ok(())
     }
+}
+
+fn read_image<P: AsRef<Path>>(path: P) -> image::ImageResult<image::DynamicImage> {
+    image::io::Reader::open(path)?
+        .with_guessed_format()?
+        .decode()
+}
+
+fn split_horizontal<const N: usize>(area: Rect, constraints: [Constraint; N]) -> [Rect; N] {
+    let layout = Layout::new()
+        .constraints(constraints)
+        .direction(Direction::Horizontal)
+        .split(area);
+
+    array::from_fn(|index| layout[index])
+}
+
+fn main() -> image::ImageResult<()> {
+    let mut terminal = ratatui::Terminal::new(CrosstermBackend::new(BufWriter::new(io::stdout())))?;
+    let size = terminal.backend_mut().window_size()?;
+    let cell_width = size.pixels.width / size.columns_rows.width;
+    let cell_height = size.pixels.height / size.columns_rows.height;
+    let mut layout = split_horizontal(
+        Rect::new(0, 0, size.columns_rows.width, size.columns_rows.height),
+        [Constraint::Length(16), Constraint::Min(1)],
+    );
+    let mut sixel_string = String::new();
+    let sixel_encoder = SixelEncoder::new(io::Cursor::new(unsafe { sixel_string.as_mut_vec() }));
+
+    layout[0].height = layout[0].width;
+
+    let _image = //read_image("sample.png")?
+    DynamicImage::from(RgbaImage::from_pixel(64, 64, Rgba([0, 255, 0, 255])))
+        .resize(
+            (layout[0].width * cell_width) as u32,
+            (layout[0].height * cell_height) as u32,
+            imageops::Triangle,
+        )
+        .into_rgba8()
+        .write_with_encoder(sixel_encoder)?;
+
+    println!("{sixel_string}");
+
+    Ok(())
 }
