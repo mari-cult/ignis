@@ -2,7 +2,7 @@ use image::{DynamicImage, RgbaImage};
 
 use {
     self::internal::InternalEncoder,
-    bitvec::vec::BitVec,
+    bitvec::bitvec,
     image::{buffer::Pixels, imageops, Rgba},
     itertools::Itertools,
     ratatui::{
@@ -12,7 +12,7 @@ use {
     std::{
         array,
         io::{self, BufWriter, Write},
-        mem,
+        iter, mem,
         ops::Range,
         path::Path,
     },
@@ -51,7 +51,7 @@ impl<'a> Iterator for TransposeRgba<'a> {
         };
 
         let index = self.rows.start + column * self.columns.end;
-        let pixel = self.pixels.clone().nth(index)?.0;
+        let pixel = self.pixels.clone().nth(index).unwrap().0;
 
         Some(pixel)
     }
@@ -99,9 +99,9 @@ impl<W: Write> image::ImageEncoder for SixelEncoder<W> {
             .map(|rgba| <[u8; 4]>::try_from(rgba).unwrap())
             .enumerate()
         {
-            if alpha < 127 {
+            /*if alpha < 127 {
                 continue;
-            }
+            }*/
 
             fn scale(channel: u8) -> u8 {
                 ((channel as u16 * 255) / 100) as u8
@@ -116,7 +116,7 @@ impl<W: Write> image::ImageEncoder for SixelEncoder<W> {
         let width_by_six = width * 6;
         let width_by_six_in_bytes = width_by_six * mem::size_of::<Rgba<u8>>();
 
-        let mut render_bits = BitVec::with_capacity(width_by_six);
+        let mut render_bits = bitvec![0; width_by_six];
         let mut six_rows_iter = image
             .as_raw()
             .chunks_exact(width_by_six_in_bytes)
@@ -129,13 +129,17 @@ impl<W: Write> image::ImageEncoder for SixelEncoder<W> {
 
             while let Some(unique_rgba) = unique_rgba_iter.next() {
                 let index = color_map.index_of(&unique_rgba) as u16;
-                let bits = transposed
+                let new_bits = transposed
                     .clone()
-                    .map(|rgba| rgba[3] >= 127 && rgba == unique_rgba);
+                    .map(|rgba| /*rgba[3] >= 127 &&*/ rgba == unique_rgba);
 
-                render_bits.clear();
-                render_bits.extend(bits);
-                self.encoder.write_render_pixels(index, &render_bits)?;
+                render_bits.fill(false);
+
+                for (a, b) in iter::zip(render_bits.iter_mut(), new_bits) {
+                    a.commit(b);
+                }
+
+                self.encoder.write_render_line(index, &render_bits)?;
 
                 if unique_rgba_iter.peek().is_some() {
                     self.encoder.write_move_to_start_of_line()?;
@@ -175,15 +179,20 @@ fn main() -> image::ImageResult<()> {
     let cell_height = size.pixels.height / size.columns_rows.height;
     let mut layout = split_horizontal(
         Rect::new(0, 0, size.columns_rows.width, size.columns_rows.height),
-        [Constraint::Length(16), Constraint::Min(1)],
+        [Constraint::Length(8), Constraint::Min(1)],
     );
     let mut sixel_string = String::new();
     let sixel_encoder = SixelEncoder::new(io::Cursor::new(unsafe { sixel_string.as_mut_vec() }));
 
     layout[0].height = layout[0].width;
 
-    let _image = //read_image("sample.png")?
-    DynamicImage::from(RgbaImage::from_pixel(64, 64, Rgba([0, 255, 0, 255])))
+    let mut image = RgbaImage::new(64, 64);
+    //read_image("sample.png")?;
+    // DynamicImage::from(RgbaImage::from_pixel(64, 64, Rgba([0, 255, 0, 255])))
+
+    imageops::horizontal_gradient(&mut image, &Rgba([255, 0, 0, 255]), &Rgba([0, 0, 255, 255]));
+
+    DynamicImage::from(image)
         .resize(
             (layout[0].width * cell_width) as u32,
             (layout[0].height * cell_height) as u32,
