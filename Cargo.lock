@@ -1638,6 +1638,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "mocha-shell"
+version = "0.1.0"
+
+[[package]]
 name = "mocha-std"
 version = "0.0.0"
 dependencies = [

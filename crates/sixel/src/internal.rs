@@ -7,23 +7,29 @@ use {
     },
 };
 
+const MASK: u8 = 0b0011_1111;
+
 pub struct InternalEncoder<W: Write> {
     writer: W,
 }
 
 impl<W: Write> InternalEncoder<W> {
+    #[inline]
     pub fn new(writer: W) -> Self {
         Self { writer }
     }
 
+    #[inline]
     pub fn into_inner(self) -> W {
         self.writer
     }
 
+    #[inline]
     pub fn write_bytes(&mut self, bytes: &[u8]) -> io::Result<()> {
         self.writer.write_all(bytes)
     }
 
+    #[inline]
     pub fn write_byte(&mut self, byte: u8) -> io::Result<()> {
         self.write_bytes(slice::from_ref(&byte))
     }
@@ -39,7 +45,7 @@ impl<W: Write> InternalEncoder<W> {
     pub fn write_set_color_register(&mut self, index: u16, rgb: [u8; 3]) -> io::Result<()> {
         let [red, green, blue] = rgb;
 
-        write!(self.writer, "#{index};2;{red};{green};{blue}\n")
+        write!(self.writer, "#{index};2;{red};{green};{blue}")
     }
 
     pub fn write_render_pixels(&mut self, index: u16, pixel: u8, repeat: usize) -> io::Result<()> {
@@ -49,7 +55,7 @@ impl<W: Write> InternalEncoder<W> {
             write!(self.writer, "!{repeat}")?;
         }
 
-        self.write_byte(pixel + 63)
+        self.write_byte((pixel & MASK) + 63)
     }
 
     pub fn write_render_line(&mut self, index: u16, render_bits: &BitSlice) -> io::Result<()> {
@@ -58,7 +64,7 @@ impl<W: Write> InternalEncoder<W> {
         if ones == 0 {
             Ok(())
         } else if ones == render_bits.len() {
-            self.write_render_pixels(index, 0b111111, render_bits.len())
+            self.write_render_pixels(index, MASK, render_bits.len())
         } else {
             let iter = render_bits
                 .chunks(6)
@@ -74,10 +80,10 @@ impl<W: Write> InternalEncoder<W> {
     }
 
     pub fn write_move_to_start_of_line(&mut self) -> io::Result<()> {
-        self.write_bytes(b"$\n")
+        self.write_byte(b'$')
     }
 
     pub fn write_move_to_next_line(&mut self) -> io::Result<()> {
-        self.write_bytes(b"$-\n")
+        self.write_bytes(b"$-")
     }
 }
