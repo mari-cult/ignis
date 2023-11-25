@@ -2,9 +2,9 @@
 
 - `/dev/` - Device files.
 - `/init` - Init.
+- `/mocha/{package_name}/` - Mounted package images.
 - `/proc/` - Process and kernel information.
 - `/sys/` - Information about devices, drivers, and kernel features.
-- `/system/{package_name}/` - Mounted package images.
 - `/userdata/packages/{package_name}.mocha` - Package images.
 - `/userdata/{user_name}/cache/{package_name}/` - Per-package cache.
 - `/userdata/{user_name}/data/{package_name}/` - Per-package data.
