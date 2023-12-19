@@ -38,22 +38,22 @@ pub(crate) struct Entry {
 
 /// Serialized package information.
 #[derive(Debug, Deserialize, Serialize)]
-struct Serialized {
+pub struct Serialized {
     sources: BTreeSet<Source>,
     parts: Vec<Part>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "snake_case", untagged)]
+#[serde(rename_all = "snake_case")]
 // TODO: Use faster collections than BTreeSet's, and stricter validation.
 /// A part to assemble a package.
-enum Part {
+pub enum Part {
     Rust {
         #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
         features: BTreeSet<CargoFeature>,
         #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
         depends: BTreeSet<PackageIdent>,
-        artifacts: BTreeSet<Artifact>,
+        artifacts: BTreeSet<String>,
     },
     CCpp {
         #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
@@ -137,6 +137,14 @@ impl Package {
         &self.entry.system_dir
     }
 
+    pub fn sources(&self) -> impl Iterator<Item = &Source> {
+        self.entry.serialized.sources.iter()
+    }
+
+    pub fn parts(&self) -> &[Part] {
+        &self.entry.serialized.parts
+    }
+
     /// Attempt to uninstall this package.
     pub fn uninstall(&self) -> io::Result<()> {
         if !self.is_installed() {
@@ -167,14 +175,14 @@ pub(crate) fn entry(
     let (ident, extension) =
         milk::parts_of(&entry).ok_or_else(|| invalid_data("missing file stem and extension"))?;
 
-    if extension != "spec" {
+    if extension != "toml" {
         return Err(invalid_data("not a spec"));
     }
 
     let ident = ident.parse()?;
     let repository = entry.parent().file_name().unwrap().parse()?;
-    let specification = mocha_fs::open_buffered(entry.path())?;
-    let serialized = serde_yaml::from_reader(specification).map_err(|error| {
+    let specification = std::fs::read_to_string(entry.path())?;
+    let serialized = toml::from_str(&specification).map_err(|error| {
         eprintln!("{ident}: {error}");
 
         io::Error::new(io::ErrorKind::InvalidData, error)

@@ -34,7 +34,7 @@ pub enum SourceError {
         error: url::ParseError,
     },
 
-    #[error("expected \"github:/{{user}}/{{repository}}\"")]
+    #[error("expected \"github:{{user}}/{{repository}}\"")]
     ExpectedGithub,
 
     #[error("unsupported source: {url}")]
@@ -107,7 +107,13 @@ fn check_cargo_feature(input: &str) -> Result<(), IdentError> {
 
 /// Check whether the input is a valid source URL.
 fn parse_source_url(input: &str) -> Result<String, IdentError> {
-    let url = input.parse::<url::Url>().map_err(SourceError::from)?;
+    if let Some(rest) = input.strip_prefix("github:") {
+        if let Some((user, repo)) = rest.split_once("/") {
+            return Ok(format!("github:{user}/{repo}"));
+        }
+    }
+
+    let url = dbg!(input).parse::<url::Url>().map_err(SourceError::from)?;
     let scheme = url.scheme();
     let host = url.host_str();
     let mut path = url
@@ -115,6 +121,7 @@ fn parse_source_url(input: &str) -> Result<String, IdentError> {
         .into_iter()
         .flatten()
         .map(|segment| dbg!(segment));
+
     let sanitized = match (scheme, host) {
         ("github", None) | ("http" | "https", Some("github.com")) => {
             let (user, repository) = path
@@ -191,8 +198,8 @@ impl str::FromStr for Source {
     type Err = IdentError;
 
     fn from_str(url: &str) -> Result<Self, Self::Err> {
-        let len = generic_check(url, Self::CAPACITY)?;
-        let url = parse_source_url(url)?;
+        let len = dbg!(generic_check(dbg!(url), Self::CAPACITY))?;
+        let url = dbg!(parse_source_url(url))?;
         let url = url.as_str();
         let mut data = [MaybeUninit::uninit(); Self::CAPACITY];
 
@@ -201,6 +208,19 @@ impl str::FromStr for Source {
         }
 
         Ok(Self { data, len })
+    }
+}
+
+impl Source {
+    pub fn as_url(&self) -> String {
+        let (u, r) = self
+            .as_str()
+            .strip_prefix("github:")
+            .unwrap()
+            .split_once("/")
+            .unwrap();
+
+        format!("https://github.com/{u}/{r}")
     }
 }
 

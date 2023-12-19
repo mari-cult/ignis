@@ -98,7 +98,7 @@ impl Arch {
     // NOTE: tea itself must be compiled for <arch>-musl-static.
     pub const HOST: Self = if cfg!(target_arch = "arm") {
         Self::Arm
-    } else if cfg!(target_arch = "arm64") {
+    } else if cfg!(target_arch = "aarch64") {
         Self::Arm64
     } else if cfg!(target_arch = "x86") {
         Self::X86

@@ -1,6 +1,9 @@
 //#![deny(warnings)]
 
+use std::{num::NonZeroU128, sync::atomic::AtomicBool};
+
 use crossterm::style::Stylize;
+use mocha_fs::Utf8Path;
 
 pub use crate::{args::Args, index::Index, milk::Milk};
 
@@ -57,13 +60,14 @@ async fn run() {
 
             println!("To be installed: {list}");
 
-            for _package in packages {
-                /*let result = add(&ident, entry).await;
+            for package in packages {
+                let ident = package.ident();
+                let result = add(&package).await;
 
                 match result {
                     Ok(()) => println!("Installed: {ident}"),
                     Err(error) => println!("Failed to install {ident}: {error}"),
-                }*/
+                }
             }
         }
         Args::Del { packages } => {
@@ -118,16 +122,41 @@ async fn run() {
     }
 }
 
-/*async fn add(package: &Package) -> io::Result<()> {
-    let source_dir = Utf8Path::new("/mocha/sources").join(package);
+use {
+    crate::index::{Package, Part},
+    gix::remote::fetch::Shallow,
+    mocha_cargo::Cargo,
+    mocha_image::Permissions,
+    mocha_progress::ProgressBars,
+    mocha_utils::process::{Category, Command, Rule, Stdio},
+    std::{
+        fs,
+        io::{self, BufWriter},
+        num::NonZeroU32,
+        time::Instant,
+    },
+};
+
+async fn add(package: &Package) -> anyhow::Result<()> {
+    let source_dir = Utf8Path::new("/mocha/sources").join(package.ident());
     let image_dir = source_dir.join("image");
-    let prefix = package.blue();
+    let prefix = package.ident();
+    let prefix = prefix.blue();
 
     // TODO: Figure out how to handle multiple sources.
-    for source in &entry.serialized.sources {
+    for source in package.sources() {
         println!("{prefix}: Syncing {}.", format!("{source:?}").green());
 
         let start_time = Instant::now();
+
+        /*const DEPTH_1: Shallow = Shallow::DepthAtRemote(NonZeroU32::new(1).unwrap());
+
+        let interrupt = AtomicBool::new(false);
+
+        gix::prepare_clone(source.as_url(), &source_dir)?
+            .with_shallow(Shallow::DepthAtRemote(1.try_into().unwrap()))
+            .fetch_only(gix::progress::Discard, &interrupt)?;*/
+
         let git = Command::new("/usr/bin/git")
             .current_dir(&source_dir)
             .stdout(Stdio::inherit())
@@ -139,7 +168,10 @@ async fn run() {
 
             fs::create_dir_all(&source_dir)?;
 
-            git.arg("clone").arg("--depth=1").arg(source).arg(".")
+            git.arg("clone")
+                .arg("--depth=1")
+                .arg(source.as_url())
+                .arg(".")
         } else {
             git.arg("pull").arg("--depth=1")
         };
@@ -151,15 +183,19 @@ async fn run() {
         println!("{prefix}: Sync finished in {elapsed:.2?}.");
     }
 
+    println!("image_dir = {image_dir:?}");
+
     if !image_dir.is_dir() {
         let _ = fs::remove_dir_all(&image_dir);
 
         fs::create_dir_all(&image_dir)?;
+
+        println!("recreated");
     }
 
     let mut permissions = Permissions::empty();
 
-    for part in &entry.serialized.parts {
+    for part in package.parts() {
         let start_time = Instant::now();
 
         match part {
@@ -192,19 +228,31 @@ async fn run() {
 
                 println!("{prefix}:   {artifacts_list}");
 
-                let target = "x86_64-gnu".parse().unwrap();
-                let cargo = Cargo::new("/mari/.cargo/bin/cargo")?;
+                let target = "arm64-gnu".parse().unwrap();
+
+                println!("{prefix}: target {target}");
+
+                let cargo = Cargo::new("/you/config/rust/bin/cargo")?;
                 let mut child = cargo
                     .build(&source_dir)
-                    .features(features)
+                    .features(
+                        features
+                            .iter()
+                            .map(|feature| feature.to_string())
+                            .collect::<Vec<_>>(),
+                    )
                     .target(target)
-                    .spawn()?;
+                    .spawn()
+                    .map_err(|error| io::Error::other(format!("cargo: {error}")))?;
 
                 let mut stdout = BufWriter::new(io::stdout());
                 let mut status = (0, 0);
                 let mut time = tokio::time::interval(std::time::Duration::from_millis(50));
 
                 loop {
+                    //println!("{child:?}");
+                    println!("{time:?}");
+
                     tokio::select! {
                         biased;
 
@@ -217,16 +265,18 @@ async fn run() {
                         }
                         _ = time.tick() => {
                             ProgressBars::new()
-                                .add(package, status.0, status.1)
+                                .add(&package.ident(), status.0, status.1)
                                 .auto_terminal_width()
                                 .render(&mut stdout)?;
                         }
                     }
                 }
 
-                println!();
+                println!("fuck");
 
                 for artifact in artifacts {
+                    println!("artifact = {artifact:?}");
+
                     if let Some((link_name, source)) = artifact.split_once(" -> ") {
                         use std::os::unix::fs::symlink;
 
@@ -244,11 +294,17 @@ async fn run() {
                             .join("release")
                             .join(artifact);
 
-                        fs::copy(source, image_dir.join(artifact))?;
+                        println!("source = {source:?}");
+
+                        fs::copy(source, image_dir.join(artifact))
+                            .map_err(|error| io::Error::other(format!("copy artifact: {error}")))?;
 
                         permissions.insert(Permissions::EXECUTE);
 
-                        println!("{prefix}: Binary {binary}", binary = artifact.green());
+                        println!(
+                            "{prefix}: Binary {binary}",
+                            binary = artifact.as_str().green()
+                        );
                     }
                 }
             }
@@ -260,12 +316,11 @@ async fn run() {
         println!("{prefix}: Produced artifacts in {elapsed:.2?}");
     }
 
-    let _ = fs::create_dir_all("/mocha/images");
+    /*let _ = fs::create_dir_all("/mocha/images");
     let _ = fs::create_dir_all(&system_path);
 
     mocha_image::brew_mocha(image_dir, &mocha_path, permissions).await?;
-    mocha_image::drink_mocha(mocha_path, system_path)?;
+    mocha_image::drink_mocha(mocha_path, system_path)?;*/
 
     Ok(())
 }
-*/
