@@ -7,7 +7,6 @@ use {
 /// Mocha's package manager.
 #[derive(Debug, Parser)]
 #[command(arg_required_else_help = true)]
-#[command(verbatim_doc_comment)]
 pub enum Args {
     /// Install or update packages.
     ///
@@ -17,7 +16,6 @@ pub enum Args {
     ///   milk add package@gnu
     ///   milk add package@musl-dynamic
     #[command(arg_required_else_help = true)]
-    #[command(verbatim_doc_comment)]
     Add {
         /// Set of packages.
         #[arg(required = true)]
@@ -27,7 +25,6 @@ pub enum Args {
 
     /// Uninstall packages.
     #[command(arg_required_else_help = true)]
-    #[command(verbatim_doc_comment)]
     Del {
         /// Set of packages.
         #[arg(required = true)]
@@ -37,7 +34,6 @@ pub enum Args {
 
     /// Format package specifications.
     #[command(arg_required_else_help = true)]
-    #[command(verbatim_doc_comment)]
     Fmt {
         /// Set of path specifications.
         #[arg(required = true)]
@@ -48,7 +44,6 @@ pub enum Args {
 
     /// Synchronize package repositories.
     #[command(arg_required_else_help = true)]
-    #[command(verbatim_doc_comment)]
     Sync {
         /// Set of repositories.
         #[arg(required = true)]
