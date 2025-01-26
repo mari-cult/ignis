@@ -8,7 +8,7 @@ anyhow = { version = "1.0.75", default-features = false, features = ["std"] }
 clap = { version = "4.4.2", default-features = false, features = ["derive", "help", "std", "usage"] }
 codespan-reporting = { version = "0.11.1", default-features = false }
 crossterm = { version = "0.26.1", default-features = false }
-gix = { version = "0.56.0", default-features = false, features = ["blocking-http-transport-reqwest-rust-tls-trust-dns"] }
+#gix = { version = "0.56.0", default-features = false, features = ["blocking-http-transport-reqwest-rust-tls-trust-dns"] }
 itertools = { version = "0.10.5", default-features = false, features = ["use_std"] }
 mocha_cargo = { version = "0.0.0", path = "crates/mocha_cargo", default-features = false }
 mocha_fs = { version = "0.0.0", path = "crates/mocha_fs", default-features = false }

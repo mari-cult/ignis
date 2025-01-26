@@ -124,7 +124,7 @@ async fn run() {
 
 use {
     crate::index::{Package, Part},
-    gix::remote::fetch::Shallow,
+    ////gix::remote::fetch::Shallow,
     mocha_cargo::Cargo,
     mocha_image::Permissions,
     mocha_progress::ProgressBars,
