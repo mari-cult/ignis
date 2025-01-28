@@ -10,4 +10,4 @@ mocha_target = { version = "0.0.0", path = "../mocha_target", default-features =
 mocha_utils = { version = "0.0.0", path = "../mocha_utils", default-features = false }
 serde = { version = "1.0.163", default-features = false, features = ["derive", "std"] }
 serde_json = { version = "1.0.96", default-features = false, features = ["std"] }
-tokio = { version = "1.28.1", default-features = false, features = ["io-util", "process"] }
+tokio = { workspace = true, features = ["io-util", "process"] }

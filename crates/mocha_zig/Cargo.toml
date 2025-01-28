@@ -7,4 +7,4 @@ edition = "2021"
 mocha_fs = { version = "0.0.0", path = "../mocha_fs", default-features = false }
 mocha_target = { version = "0.0.0", path = "../mocha_target", default-features = false }
 mocha_utils = { version = "0.0.0", path = "../mocha_utils", default-features = false }
-tokio = { version = "1.28.1", default-features = false, features = ["io-util", "process"] }
+tokio = { workspace = true, features = ["io-util", "process"] }

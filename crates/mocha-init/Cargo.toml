@@ -12,5 +12,5 @@ mocha-os = { version = "0.0.0", path = "../mocha-os", default-features = false }
 rtnetlink = { version = "0.13.1", default-features = false, features = ["tokio_socket"] }
 serde = { version = "1.0.188", default-features = false, features = ["derive", "std"] }
 thiserror = { version = "1.0.47", default-features = false }
-tokio = { version = "1.32.0", default-features = false, features = ["macros", "net", "process", "rt", "signal", "time"] }
+tokio = { workspace = true, features = ["macros", "net", "process", "rt-multi-thread", "signal", "time"] }
 toml = { version = "0.7.6", default-features = false, features = ["display", "parse"] }

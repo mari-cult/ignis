@@ -11,4 +11,4 @@ nix = { version = "0.26.2", default-features = false, features = ["user"] }
 sc = { version = "0.2.7", default-features = false }
 seccomp = { version = "0.1.2", default-features = false }
 thiserror = { version = "1.0.40", default-features = false }
-tokio = { version = "1.28.1", default-features = false, features = ["process"] }
+tokio = { workspace = true, features = ["process"] }
