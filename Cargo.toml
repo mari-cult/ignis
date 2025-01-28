@@ -5,10 +5,9 @@ edition = "2021"
 
 [dependencies]
 anyhow = { version = "1.0.75", default-features = false, features = ["std"] }
-clap.workspace = true
+clap = { workspace = true }
 codespan-reporting = { version = "0.11.1", default-features = false }
 crossterm = { version = "0.26.1", default-features = false }
-#gix = { version = "0.56.0", default-features = false, features = ["blocking-http-transport-reqwest-rust-tls-trust-dns"] }
 itertools = { version = "0.10.5", default-features = false, features = ["use_std"] }
 mocha_cargo = { version = "0.0.0", path = "crates/mocha_cargo", default-features = false }
 mocha_fs = { version = "0.0.0", path = "crates/mocha_fs", default-features = false }
@@ -19,19 +18,16 @@ mocha_target = { version = "0.0.0", path = "crates/mocha_target", default-featur
 mocha_utils = { version = "0.0.0", path = "crates/mocha_utils", default-features = false }
 petgraph = { version = "0.6.3", default-features = false }
 rustix = { version = "0.37.19", default-features = false, features = ["fs"] }
-serde = { version = "1.0.160", default-features = false, features = ["derive", "std"] }
-serde_yaml = { version = "0.9.21", default-features = false }
+serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
-toml = { version = "0.8.8", default-features = false, features = ["display", "parse"] }
-walkdir = { version = "2.3.3", default-features = false }
-
-[profile.release]
-lto = "fat"
-strip = "symbols"
+toml = { workspace = true, features = ["parse"] }
 
 [workspace]
 members = ["crates/*"]
 
 [workspace.dependencies]
 clap = { version = "4.5", default-features = false, features = ["color", "derive", "env", "error-context", "help", "std", "suggestions", "unicode", "usage"] }
+serde = { version = "1", default-features = false }
 tokio = { version = "1.43", default-features = false }
+toml = { version = "0.8", default-features = false }
+walkdir = { version = "2.5", default-features = false }
