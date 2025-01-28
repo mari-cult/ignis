@@ -34,4 +34,4 @@ members = ["crates/*"]
 
 [workspace.dependencies]
 clap = { version = "4.5", default-features = false, features = ["color", "derive", "env", "error-context", "help", "std", "suggestions", "unicode", "usage"] }
-tokio = { version = "1.43.0", default-features = false }
+tokio = { version = "1.43", default-features = false }
