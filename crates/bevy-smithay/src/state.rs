@@ -18,7 +18,7 @@ use smithay::backend::session::libseat::LibSeatSession;
 use smithay::backend::session::Session;
 use smithay::backend::udev::{UdevBackend, UdevEvent};
 use smithay::desktop::{PopupManager, Space, Window, WindowSurfaceType};
-use smithay::input::keyboard::XkbConfig;
+use smithay::input::keyboard::{FilterResult, KeysymHandle, ModifiersState, XkbConfig};
 use smithay::input::{Seat, SeatState};
 use smithay::output::{Mode, Output, PhysicalProperties, Subpixel};
 use smithay::reexports::calloop::generic::Generic;
@@ -434,42 +434,34 @@ impl SmithayAppRunnerState {
         let serial = SERIAL_COUNTER.next_serial();
         let keyboard = self.smithay_state.seat.get_keyboard().unwrap();
         let time = event.time_msec();
-        let mut is_exit = false;
 
         keyboard
-            .input(
-                self,
-                keycode,
-                state,
-                serial,
-                time,
-                |state, modifiers, keysym| {
-                    if let Some(character) = keysym.modified_sym().key_char() {
-                        use bevy::input::keyboard::Key;
-                        use std::iter;
-
-                        let key = Key::Character(iter::once(character).collect());
-
-                        println!("{key:?}");
-                    }
-
-                    let keycode = keysym.raw_code().raw();
-                    let keycode = crate::convert::x11_to_keycode(keycode);
-
-                    println!("{keysym:?} -> {keycode:?}");
-
-                    if keycode == bevy::input::keyboard::KeyCode::Escape {
-                        is_exit = true;
-                    }
-
-                    smithay::input::keyboard::FilterResult::Forward
-                },
-            )
+            .input(self, keycode, state, serial, time, Self::on_input)
             .unwrap_or(());
+    }
 
-        if is_exit {
-            self.app.world_mut().send_event(AppExit::Success);
+    fn on_input(&mut self, modifiers: &ModifiersState, keysym: KeysymHandle) -> FilterResult<()> {
+        if let Some(character) = keysym.modified_sym().key_char() {
+            use bevy::input::keyboard::Key;
+            use std::iter;
+
+            let key = Key::Character(iter::once(character).collect());
+
+            println!("{key:?}");
         }
+
+        let keycode = keysym.raw_code().raw();
+        let keycode = crate::convert::x11_to_keycode(keycode);
+
+        println!("{keysym:?} -> {keycode:?}");
+
+        let world = self.app.world_mut();
+
+        if keycode == bevy::input::keyboard::KeyCode::Escape {
+            world.send_event(AppExit::Success);
+        }
+
+        FilterResult::Forward
     }
 
     pub fn run(&mut self, event_loop: &mut EventLoop<Self>) -> AppExit {
