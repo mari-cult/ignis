@@ -5,6 +5,7 @@ use bevy::render::extract_resource::ExtractResourcePlugin;
 use external_image::ExternalImagePlugin;
 use smithay::reexports::calloop::EventLoop;
 
+pub mod convert;
 pub mod external_image;
 pub mod state;
 pub mod util;

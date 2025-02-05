@@ -443,7 +443,10 @@ impl SmithayAppRunnerState {
                 serial,
                 time,
                 |state, modifiers, keysym| {
-                    println!("{keysym:?}");
+                    let keycode = keysym.raw_code().raw();
+                    let keycode = crate::convert::x11_to_keycode(keycode);
+
+                    println!("{keysym:?} -> {keycode:?}");
 
                     smithay::input::keyboard::FilterResult::Forward
                 },
