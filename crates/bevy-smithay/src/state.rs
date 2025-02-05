@@ -434,6 +434,7 @@ impl SmithayAppRunnerState {
         let serial = SERIAL_COUNTER.next_serial();
         let keyboard = self.smithay_state.seat.get_keyboard().unwrap();
         let time = event.time_msec();
+        let mut is_exit = false;
 
         keyboard
             .input(
@@ -443,15 +444,32 @@ impl SmithayAppRunnerState {
                 serial,
                 time,
                 |state, modifiers, keysym| {
+                    if let Some(character) = keysym.modified_sym().key_char() {
+                        use bevy::input::keyboard::Key;
+                        use std::iter;
+
+                        let key = Key::Character(iter::once(character).collect());
+
+                        println!("{key:?}");
+                    }
+
                     let keycode = keysym.raw_code().raw();
                     let keycode = crate::convert::x11_to_keycode(keycode);
 
                     println!("{keysym:?} -> {keycode:?}");
 
+                    if keycode == bevy::input::keyboard::KeyCode::Escape {
+                        is_exit = true;
+                    }
+
                     smithay::input::keyboard::FilterResult::Forward
                 },
             )
             .unwrap_or(());
+
+        if is_exit {
+            self.app.world_mut().send_event(AppExit::Success);
+        }
     }
 
     pub fn run(&mut self, event_loop: &mut EventLoop<Self>) -> AppExit {
