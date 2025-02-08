@@ -1,5 +1,5 @@
 [package]
-name = "bevy-smithay"
+name = "bevy-compositor"
 version = "0.0.0"
 edition = "2021"
 

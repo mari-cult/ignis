@@ -6,6 +6,6 @@ edition = "2021"
 [dependencies]
 ash = { workspace = true }
 bevy = { workspace = true, features = ["bevy_pbr", "bevy_text", "bevy_ui", "bevy_window", "tonemapping_luts"] }
-bevy-smithay = { workspace = true }
+bevy-compositor = { workspace = true }
 thiserror = { workspace = true }
 wgpu = { workspace = true }

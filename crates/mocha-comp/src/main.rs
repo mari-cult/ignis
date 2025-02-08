@@ -11,9 +11,9 @@ use bevy::render::render_resource::{
 //use bevy::render::texture::GpuImage;
 //use bevy::render::{Extract, Render, RenderApp, RenderSet};
 //use bevy::utils::HashMap;
-use bevy_smithay::external_image::ExternalImages;
-use bevy_smithay::state::{/*DiagnosticText,*/ MainCamera, MainTexture};
-use bevy_smithay::SmithayPlugin;
+use bevy_compositor::external_image::ExternalImages;
+use bevy_compositor::state::{/*DiagnosticText,*/ MainCamera, MainTexture};
+use bevy_compositor::SmithayPlugin;
 
 // #[derive(Clone, Debug, Resource)]
 // pub struct FontCollection {
