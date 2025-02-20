@@ -28,7 +28,10 @@ impl Plugin for SmithayPlugin {
             }
         };
 
+        let loop_handle = event_loop.handle();
+
         app.add_plugins(ExternalImagePlugin)
+            .insert_non_send_resource(loop_handle)
             .insert_non_send_resource(event_loop)
             .set_runner(smithay_runner);
     }
