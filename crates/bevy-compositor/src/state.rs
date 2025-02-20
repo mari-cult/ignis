@@ -124,10 +124,7 @@ pub struct ClientState {
     pub security_context: Option<SecurityContext>,
 }
 
-impl ClientData for ClientState {
-    fn initialized(&self, _client_id: ClientId) {}
-    fn disconnected(&self, _client_id: ClientId, _reason: DisconnectReason) {}
-}
+impl ClientData for ClientState {}
 
 pub struct SmithayState {
     pub compositor_state: CompositorState,
