@@ -1,4 +1,5 @@
 use super::util;
+use super::{EventLoop, LoopHandle};
 use bevy::app::PluginsState;
 use bevy::prelude::*;
 use bevy::render::camera::{ManualTextureViewHandle, ManualTextureViews, RenderTarget};
@@ -22,7 +23,7 @@ use smithay::input::keyboard::{FilterResult, KeysymHandle, ModifiersState, XkbCo
 use smithay::input::{Seat, SeatState};
 use smithay::output::{Mode, Output, PhysicalProperties, Subpixel};
 use smithay::reexports::calloop::generic::Generic;
-use smithay::reexports::calloop::{EventLoop, InsertError, Interest, PostAction};
+use smithay::reexports::calloop::{InsertError, Interest, PostAction};
 use smithay::reexports::gbm;
 use smithay::reexports::input::event::keyboard::KeyboardKeyEvent;
 use smithay::reexports::input::Libinput;
@@ -271,7 +272,8 @@ pub struct SmithayAppRunnerState {
 }
 
 impl SmithayAppRunnerState {
-    pub fn try_new(event_loop: &mut EventLoop<Self>, app: App) -> Result<Self, Error> {
+    pub fn try_new(event_loop: &mut EventLoop, app: App) -> Result<Self, Error> {
+        let loop_handle = event_loop.handle();
         let display = Display::<Self>::new()?;
         let display_handle = display.handle();
         let (mut session, session_notifier) = LibSeatSession::new()?;
@@ -286,38 +288,30 @@ impl SmithayAppRunnerState {
         let backend = LibinputInputBackend::new(context.clone());
         let source = ListeningSocketSource::new_auto()?;
 
-        event_loop
-            .handle()
-            .insert_source(session_notifier, |event, _metadata, state| {
-                dbg!(event);
-                // todo
-            })?;
+        loop_handle.insert_source(session_notifier, |event, _metadata, state| {
+            dbg!(event);
+            // todo
+        })?;
 
-        event_loop
-            .handle()
-            .insert_source(udev, |event, _metadata, state| {
-                state.on_udev_event(dbg!(event))
-            })?;
+        loop_handle.insert_source(udev, |event, _metadata, state| {
+            state.on_udev_event(dbg!(event))
+        })?;
 
-        event_loop
-            .handle()
-            .insert_source(backend, |event, _metadata, state| {
-                state.on_input_event(dbg!(event))
-            })?;
+        loop_handle.insert_source(backend, |event, _metadata, state| {
+            state.on_input_event(dbg!(event))
+        })?;
 
-        event_loop
-            .handle()
-            .insert_source(source, |client_stream, _metadata, state| {
-                state
-                    .display_handle
-                    .insert_client(
-                        dbg!(client_stream),
-                        std::sync::Arc::new(ClientState::default()),
-                    )
-                    .expect("new client");
-            })?;
+        loop_handle.insert_source(source, |client_stream, _metadata, state| {
+            state
+                .display_handle
+                .insert_client(
+                    dbg!(client_stream),
+                    std::sync::Arc::new(ClientState::default()),
+                )
+                .expect("new client");
+        })?;
 
-        event_loop.handle().insert_source(
+        loop_handle.insert_source(
             Generic::new(
                 display,
                 Interest::READ,
@@ -342,11 +336,9 @@ impl SmithayAppRunnerState {
 
         let (mut drm_device, drm_device_notifier) = DrmDevice::new(drm_device_fd.clone(), true)?;
 
-        event_loop
-            .handle()
-            .insert_source(drm_device_notifier, |event, _metadata, state| {
-                state.on_drm_event(event)
-            })?;
+        loop_handle.insert_source(drm_device_notifier, |event, _metadata, state| {
+            state.on_drm_event(event)
+        })?;
 
         let mut drm_scanner = DrmScanner::<SimpleCrtcMapper>::new();
         let _result = drm_scanner
@@ -462,7 +454,7 @@ impl SmithayAppRunnerState {
         FilterResult::Forward
     }
 
-    pub fn run(&mut self, event_loop: &mut EventLoop<Self>) -> AppExit {
+    pub fn run(&mut self, event_loop: &mut EventLoop) -> AppExit {
         loop {
             let _result = event_loop.dispatch(Some(Duration::from_millis(1000 / 15)), self);
 
