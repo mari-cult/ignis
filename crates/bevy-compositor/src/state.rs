@@ -67,6 +67,8 @@ mod xdg_decoration;
 mod xdg_foreign;
 mod xdg_shell;
 
+const SUPPORTED_FORMATS: &[Format] = &[Format::Argb8888, Format::Xrgb8888];
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("wayland display: {0}")]
@@ -153,16 +155,15 @@ impl SmithayState {
 
         let default_feedback = DmabufFeedbackBuilder::new(
             drm_node.dev_id(),
-            [
-                allocator::Format {
-                    code: Fourcc::Abgr8888,
+            SUPPORTED_FORMATS
+                .iter()
+                .copied()
+                .map(u32::from)
+                .flat_map(Fourcc::try_from)
+                .map(|code| allocator::Format {
+                    code,
                     modifier: Modifier::Linear,
-                },
-                allocator::Format {
-                    code: Fourcc::Xrgb8888,
-                    modifier: Modifier::Linear,
-                },
-            ],
+                }),
         )
         .build()
         .unwrap();
@@ -197,7 +198,7 @@ impl SmithayState {
 
         let shm_state = ShmState::new::<SmithayAppRunnerState>(
             display_handle,
-            [Format::Argb8888, Format::Xrgb8888],
+            SUPPORTED_FORMATS.iter().copied(),
         );
 
         let mut space = Space::default();
