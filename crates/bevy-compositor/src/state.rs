@@ -5,7 +5,7 @@ use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use bevy::render::camera::{ManualTextureViewHandle, ManualTextureViews, RenderTarget};
 use bevy::render::extract_resource::ExtractResource;
-use bevy::render::renderer::RenderDevice;
+use bevy::render::renderer::{RenderAdapter, RenderDevice};
 use bevy::render::texture::GpuImage;
 use bevy::utils::HashMap;
 use bevy::window::{PrimaryWindow, WindowResolution};
@@ -329,7 +329,23 @@ impl SmithayAppRunnerState {
             },
         )?;
 
-        let drm_node = util::find_best_gpu(&seat_name).unwrap();
+        use wgpu::hal::{self, api::Vulkan as Api};
+
+        let adapter = app.world().resource::<RenderAdapter>();
+        let nodes = unsafe {
+            adapter.as_hal::<Api, _, _>(|adapter| {
+                let adapter = adapter.unwrap();
+
+                (adapter.primary_node(), adapter.render_node())
+            })
+        };
+
+        let (Some(primary_node), Some(render_node)) = nodes else {
+            todo!("not sure if this is even an error");
+        };
+
+        let drm_node = DrmNode::from_dev_id(primary_node).unwrap();
+        //util::find_best_gpu(&seat_name).unwrap();
 
         let drm_device_fd = dbg!(session.open(&dbg!(drm_node.dev_path().unwrap()), OFlags::RDWR))
             .map(DeviceFd::from)
