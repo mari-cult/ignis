@@ -7,5 +7,7 @@ edition = "2021"
 ash = { workspace = true }
 bevy = { workspace = true, features = ["bevy_pbr", "bevy_text", "bevy_ui", "bevy_window", "tonemapping_luts"] }
 bevy-compositor = { workspace = true }
+rand = { workspace = true }
 thiserror = { workspace = true }
+unicode-segmentation = { workspace = true }
 wgpu = { workspace = true }

@@ -1,12 +1,14 @@
 use super::util;
 use super::{EventLoop, LoopHandle};
 use bevy::app::PluginsState;
+use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use bevy::render::camera::{ManualTextureViewHandle, ManualTextureViews, RenderTarget};
 use bevy::render::extract_resource::ExtractResource;
 use bevy::render::renderer::RenderDevice;
 use bevy::render::texture::GpuImage;
 use bevy::utils::HashMap;
+use bevy::window::{PrimaryWindow, WindowResolution};
 use smithay::backend::allocator::gbm::{GbmAllocator, GbmBufferFlags, GbmDevice};
 use smithay::backend::allocator::{self, Fourcc, Modifier};
 use smithay::backend::drm::gbm::Error as GbmError;
@@ -272,7 +274,7 @@ pub struct SmithayAppRunnerState {
 }
 
 impl SmithayAppRunnerState {
-    pub fn try_new(event_loop: &mut EventLoop, app: App) -> Result<Self, Error> {
+    pub fn try_new(event_loop: &mut EventLoop, mut app: App) -> Result<Self, Error> {
         let loop_handle = event_loop.handle();
         let display = Display::<Self>::new()?;
         let display_handle = display.handle();
@@ -371,6 +373,18 @@ impl SmithayAppRunnerState {
             }),
         )
         .unwrap();
+
+        {
+            use bevy::window::Window;
+
+            let mut system_state =
+                SystemState::<Query<&mut Window, With<PrimaryWindow>>>::new(app.world_mut());
+
+            let mut query = system_state.get_mut(app.world_mut());
+            let mut primary_window = query.single_mut();
+
+            primary_window.resolution = WindowResolution::new(2560.0, 1440.0);
+        }
 
         let smithay_state = SmithayState::new(&display_handle, drm_node, &seat_name);
 
