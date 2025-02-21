@@ -485,51 +485,60 @@ impl SmithayAppRunnerState {
     }
 
     pub fn run(&mut self, event_loop: &mut EventLoop) -> AppExit {
+        const FRAME_RATE: Duration = Duration::from_secs(1).checked_div(144).unwrap();
+
+        let mut start = Instant::now();
+
         loop {
-            let _result = event_loop.dispatch(Some(Duration::from_millis(1000 / 15)), self);
+            let _result = event_loop.dispatch(FRAME_RATE, self);
 
-            let render_device = self.app.world_mut().resource::<RenderDevice>();
-            let (dmabuf, slot) = self.gbm_surface.next_buffer().unwrap();
+            let now = Instant::now();
+            if now.duration_since(start) > FRAME_RATE {
+                start = now;
 
-            let gbm_buffer = dmabuf
-                .import_to(&self.gbm_device, GbmBufferFlags::empty())
-                .unwrap();
+                let render_device = self.app.world_mut().resource::<RenderDevice>();
+                let (dmabuf, _slot) = self.gbm_surface.next_buffer().unwrap();
 
-            let handle = ManualTextureViewHandle(0);
-            let (_texture, manual_texture_view) =
-                util::import_texture(render_device, &gbm_buffer).unwrap();
+                let gbm_buffer = dmabuf
+                    .import_to(&self.gbm_device, GbmBufferFlags::empty())
+                    .unwrap();
 
-            self.app
-                .world_mut()
-                .resource_mut::<ManualTextureViews>()
-                .insert(handle, manual_texture_view);
+                let handle = ManualTextureViewHandle(0);
+                let (_texture, manual_texture_view) =
+                    util::import_texture(render_device, &gbm_buffer).unwrap();
 
-            let target = RenderTarget::TextureView(handle);
+                self.app
+                    .world_mut()
+                    .resource_mut::<ManualTextureViews>()
+                    .insert(handle, manual_texture_view);
 
-            self.app.insert_resource(MainTexture(target));
+                let target = RenderTarget::TextureView(handle);
 
-            self.gbm_surface.queue_buffer(None, None, ()).unwrap();
+                self.app.insert_resource(MainTexture(target));
 
-            self.smithay_state.space.elements().for_each(|window| {
-                window.send_frame(
-                    &self.smithay_state.output,
-                    self.smithay_state.start_time.elapsed(),
-                    Some(Duration::ZERO),
-                    |_, _| Some(self.smithay_state.output.clone()),
-                )
-            });
+                self.gbm_surface.queue_buffer(None, None, ()).unwrap();
 
-            self.smithay_state.space.refresh();
-            self.smithay_state.popup_manager.cleanup();
+                if self.app.plugins_state() == PluginsState::Cleaned {
+                    self.app.update()
+                }
 
-            let _ = self.display_handle.flush_clients();
+                self.smithay_state.space.elements().for_each(|window| {
+                    window.send_frame(
+                        &self.smithay_state.output,
+                        self.smithay_state.start_time.elapsed(),
+                        Some(Duration::ZERO),
+                        |_, _| Some(self.smithay_state.output.clone()),
+                    )
+                });
 
-            if self.app.plugins_state() == PluginsState::Cleaned {
-                self.app.update()
-            }
+                self.smithay_state.space.refresh();
+                self.smithay_state.popup_manager.cleanup();
 
-            if let Some(app_exit) = self.app.should_exit() {
-                return app_exit;
+                let _ = self.display_handle.flush_clients();
+
+                if let Some(app_exit) = self.app.should_exit() {
+                    return app_exit;
+                }
             }
         }
     }
