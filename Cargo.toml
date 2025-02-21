@@ -22,6 +22,13 @@ serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
 toml = { workspace = true, features = ["parse"] }
 
+[patch.crates-io]
+naga = { version = "23", git = "https://github.com/mizz1e/wgpu", rev = "9a032e096490ab02ab4862f0afdb04edeb0b4a0e" }
+wgpu = { version = "23", git = "https://github.com/mizz1e/wgpu", rev = "9a032e096490ab02ab4862f0afdb04edeb0b4a0e" }
+wgpu-core = { version = "23", git = "https://github.com/mizz1e/wgpu", rev = "9a032e096490ab02ab4862f0afdb04edeb0b4a0e" }
+wgpu-hal = { version = "23", git = "https://github.com/mizz1e/wgpu", rev = "9a032e096490ab02ab4862f0afdb04edeb0b4a0e" }
+wgpu-types = { version = "23", git = "https://github.com/mizz1e/wgpu", rev = "9a032e096490ab02ab4862f0afdb04edeb0b4a0e" }
+
 [workspace]
 members = ["crates/*"]
 
