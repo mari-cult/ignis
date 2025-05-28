@@ -5,12 +5,5 @@ opt-level = 2
 opt-level = 3
 
 [workspace]
-members = ["crates/*"]
+members = ["kernel", "xtask"]
 resolver = "3"
-
-[patch.crates-io]
-naga = { git = "https://github.com/mizz1e/wgpu", rev = "f63eb6425a0070fccfbab4cb74371602dd37f424" }
-wgpu = { git = "https://github.com/mizz1e/wgpu", rev = "f63eb6425a0070fccfbab4cb74371602dd37f424" }
-wgpu-core = { git = "https://github.com/mizz1e/wgpu", rev = "f63eb6425a0070fccfbab4cb74371602dd37f424" }
-wgpu-hal = { git = "https://github.com/mizz1e/wgpu", rev = "f63eb6425a0070fccfbab4cb74371602dd37f424" }
-wgpu-types = { git = "https://github.com/mizz1e/wgpu", rev = "f63eb6425a0070fccfbab4cb74371602dd37f424" }
