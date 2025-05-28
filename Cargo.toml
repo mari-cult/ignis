@@ -1,53 +1,16 @@
-[package]
-name = "milk"
-version = "0.0.0"
-edition = "2021"
+[profile.dev]
+opt-level = 2
 
-[dependencies]
-anyhow = { version = "1.0.75", default-features = false, features = ["std"] }
-clap = { workspace = true }
-codespan-reporting = { version = "0.11.1", default-features = false }
-crossterm = { version = "0.26.1", default-features = false }
-itertools = { version = "0.10.5", default-features = false, features = ["use_std"] }
-mocha_cargo = { version = "0.0.0", path = "crates/mocha_cargo", default-features = false }
-mocha_fs = { version = "0.0.0", path = "crates/mocha_fs", default-features = false }
-mocha_ident = { version = "0.0.0", path = "crates/mocha_ident", default-features = false }
-mocha_image = { version = "0.0.0", path = "crates/mocha_image", default-features = false }
-mocha_progress = { version = "0.0.0", path = "crates/mocha_progress", default-features = false }
-mocha_target = { version = "0.0.0", path = "crates/mocha_target", default-features = false }
-mocha_utils = { version = "0.0.0", path = "crates/mocha_utils", default-features = false }
-petgraph = { version = "0.6.3", default-features = false }
-rustix = { version = "0.37.19", default-features = false, features = ["fs"] }
-serde = { workspace = true, features = ["derive"] }
-tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
-toml = { workspace = true, features = ["parse"] }
-
-[patch.crates-io]
-naga = { version = "23", git = "https://github.com/mizz1e/wgpu", rev = "9a032e096490ab02ab4862f0afdb04edeb0b4a0e" }
-wgpu = { version = "23", git = "https://github.com/mizz1e/wgpu", rev = "9a032e096490ab02ab4862f0afdb04edeb0b4a0e" }
-wgpu-core = { version = "23", git = "https://github.com/mizz1e/wgpu", rev = "9a032e096490ab02ab4862f0afdb04edeb0b4a0e" }
-wgpu-hal = { version = "23", git = "https://github.com/mizz1e/wgpu", rev = "9a032e096490ab02ab4862f0afdb04edeb0b4a0e" }
-wgpu-types = { version = "23", git = "https://github.com/mizz1e/wgpu", rev = "9a032e096490ab02ab4862f0afdb04edeb0b4a0e" }
+[profile.dev.package."*"]
+opt-level = 3
 
 [workspace]
 members = ["crates/*"]
+resolver = "3"
 
-[workspace.dependencies]
-# external crates
-ash = { version = "0.38", default-features = false }
-bevy = { version = "0.15", default-features = false }
-clap = { version = "4.5", default-features = false, features = ["color", "derive", "env", "error-context", "help", "std", "suggestions", "unicode", "usage"] }
-rand = { version = "0.9", default-features = false, features = ["std", "std_rng", "thread_rng"] }
-serde = { version = "1", default-features = false }
-smithay = { git = "https://github.com/Smithay/smithay", rev = "f93476cebab3d47f6729354805b3e184f6878ef2", version = "0.4", default-features = false }
-smithay-drm-extras = { git = "https://github.com/Smithay/smithay", rev = "f93476cebab3d47f6729354805b3e184f6878ef2", version = "0.1", default-features = false }
-thiserror = "2"
-tokio = { version = "1.43", default-features = false }
-toml = { version = "0.8", default-features = false }
-unicode-segmentation = { version = "1.12", default-features = false }
-walkdir = { version = "2.5", default-features = false }
-wgpu = { version = "23", default-features = false }
-
-
-# internal crates
-bevy-compositor = { version = "0", path = "crates/bevy-compositor" }
+[patch.crates-io]
+naga = { git = "https://github.com/mizz1e/wgpu", rev = "f63eb6425a0070fccfbab4cb74371602dd37f424" }
+wgpu = { git = "https://github.com/mizz1e/wgpu", rev = "f63eb6425a0070fccfbab4cb74371602dd37f424" }
+wgpu-core = { git = "https://github.com/mizz1e/wgpu", rev = "f63eb6425a0070fccfbab4cb74371602dd37f424" }
+wgpu-hal = { git = "https://github.com/mizz1e/wgpu", rev = "f63eb6425a0070fccfbab4cb74371602dd37f424" }
+wgpu-types = { git = "https://github.com/mizz1e/wgpu", rev = "f63eb6425a0070fccfbab4cb74371602dd37f424" }
